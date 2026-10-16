@@ -7,6 +7,30 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+## [0.3.0] — 2026-10-16
+
+### Ajouté
+
+- **Langues** : interface en anglais (par défaut) et en français, réglable dans Paramètres ›
+  Général. Les termes familiers des clients d'API restent identiques dans les deux langues
+  (Bearer Token, API Key, Headers, Body, Pre-request…).
+- **Mises à jour automatiques** : vérification au démarrage puis toutes les 6 heures. Les petites
+  mises à jour (correctifs) se téléchargent en arrière-plan et s'installent au redémarrage ; les
+  grosses mises à jour attendent l'accord de l'utilisateur (notification, bouton « Installer »).
+  Réglable dans Paramètres › Mises à jour.
+
+### Modifié
+
+- **Langue par défaut** : l'interface s'ouvre désormais en anglais ; le français se choisit dans
+  Paramètres › Général › Langue.
+- **Mises à jour** : cette version est la dernière à installer manuellement ; les suivantes
+  arrivent automatiquement (petites mises à jour) ou en un clic (grosses mises à jour).
+
+### Corrigé
+
+- **Mock servers** : le bouton de création restait inactif quand l'onglet Services était restauré
+  au démarrage ; une erreur de création bloquait le bouton sans message.
+
 ## [0.2.2] — 2026-10-16
 
 ### Ajouté

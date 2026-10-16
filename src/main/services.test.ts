@@ -113,6 +113,6 @@ describe('mises à jour', () => {
   it('distingue une source absente ou invalide', async () => {
     expect(await checkForUpdates('', '0.1.0')).toMatchObject({ ok: false, notConfigured: true })
     expect(await checkForUpdates('pas une source', '0.1.0')).toMatchObject({ ok: false })
-    expect(await checkForUpdates(`${base}/absent`, '0.1.0')).toMatchObject({ ok: false, message: 'La source a répondu 404.' })
+    expect(await checkForUpdates(`${base}/absent`, '0.1.0')).toMatchObject({ ok: false, message: 'The source responded 404.' })
   })
 })

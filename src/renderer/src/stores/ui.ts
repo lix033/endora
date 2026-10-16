@@ -1,6 +1,7 @@
 // Dialogues modaux (avec API à promesse) et notifications éphémères.
 
 import { create } from 'zustand'
+import { t } from '@shared/i18n'
 import { newId } from '@shared/model'
 
 export interface SaveTarget {
@@ -71,7 +72,7 @@ export function confirmDialog(title: string, message: string, buttons: ConfirmBu
   })
 }
 
-export function saveDialog(defaultName: string, title = 'Enregistrer la requête'): Promise<SaveTarget | null> {
+export function saveDialog(defaultName: string, title = t('tabs.saveRequest')): Promise<SaveTarget | null> {
   cancelCurrent()
   return new Promise((resolve) => {
     useUi.getState().openDialog({

@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { useEffect, useRef, useState } from 'react'
 import { useConsole, type ConsoleEntry } from '../stores/console'
 
@@ -11,7 +12,7 @@ function RequestEntry({ e }: { e: Extract<ConsoleEntry, { kind: 'request' }> }) 
         {e.fromScript && <span className="muted small">pm.sendRequest</span>}
         <span className={`m-${e.method} mono`}>{e.method}</span>
         <span className="mono console-url">{e.url}</span>
-        <span className={`status ${statusClass}`}>{e.error ? 'Erreur' : e.status}</span>
+        <span className={`status ${statusClass}`}>{e.error ? t('console.error') : e.status}</span>
         {e.timeMs !== undefined && <span className="muted small">{e.timeMs} ms</span>}
       </button>
       {open && (
@@ -19,7 +20,7 @@ function RequestEntry({ e }: { e: Extract<ConsoleEntry, { kind: 'request' }> }) 
           {e.error && <div className="error-text">{e.error}</div>}
           {e.requestHeaders && (
             <>
-              <div className="muted">En-têtes envoyés</div>
+              <div className="muted">{t('console.requestHeaders')}</div>
               {e.requestHeaders.map(([k, v], i) => (
                 <div key={i}>
                   {k}: {/^authorization$/i.test(k) ? `${v.slice(0, 12)}…` : v}
@@ -29,7 +30,7 @@ function RequestEntry({ e }: { e: Extract<ConsoleEntry, { kind: 'request' }> }) 
           )}
           {e.responseHeaders && (
             <>
-              <div className="muted">En-têtes reçus</div>
+              <div className="muted">{t('console.responseHeaders')}</div>
               {e.responseHeaders.map(([k, v], i) => (
                 <div key={i}>
                   {k}: {v}
@@ -57,17 +58,17 @@ export function ConsolePanel() {
   return (
     <section className="console">
       <header className="console-head">
-        <strong>Console</strong>
-        <input className="filter" placeholder="Filtrer" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <strong>{t('console.title')}</strong>
+        <input className="filter" placeholder={t('console.filter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
         <button className="ghost small" onClick={clear}>
-          Effacer
+          {t('console.clear')}
         </button>
-        <button className="ghost" onClick={() => setOpen(false)} aria-label="Fermer la console">
+        <button className="ghost" onClick={() => setOpen(false)} aria-label={t('console.close')}>
           ×
         </button>
       </header>
       <div className="console-body">
-        {visible.length === 0 && <p className="muted small pad">Les requêtes envoyées et les messages des scripts (console.log…) apparaissent ici.</p>}
+        {visible.length === 0 && <p className="muted small pad">{t('console.empty')}</p>}
         {visible.map((e) =>
           e.kind === 'request' ? (
             <RequestEntry key={e.id} e={e} />

@@ -3,6 +3,7 @@
 
 import { create } from 'zustand'
 import type { UpdateCheckResult } from '@shared/api'
+import { t } from '@shared/i18n'
 
 export interface AppNotification {
   /** Identifiant stable : une même notification n'est ajoutée qu'une fois. */
@@ -11,6 +12,8 @@ export interface AppNotification {
   body?: string
   /** Page de téléchargement ou de détails. */
   url?: string
+  /** Boutons d'action (installer, redémarrer…), affichés avant « Détails ». */
+  actions?: Array<{ label: string; run: () => void; primary?: boolean }>
   createdAt: string
   read: boolean
 }
@@ -18,6 +21,8 @@ export interface AppNotification {
 interface NotificationsState {
   items: AppNotification[]
   add: (n: Omit<AppNotification, 'createdAt' | 'read'>) => boolean
+  /** Ajoute ou remplace (même identifiant), non lue. */
+  upsert: (n: Omit<AppNotification, 'createdAt' | 'read'>) => void
   markAllRead: () => void
   dismiss: (id: string) => void
 }
@@ -30,6 +35,8 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
     set({ items: [{ ...n, createdAt: new Date().toISOString(), read: false }, ...get().items] })
     return true
   },
+
+  upsert: (n) => set({ items: [{ ...n, createdAt: new Date().toISOString(), read: false }, ...get().items.filter((i) => i.id !== n.id)] }),
 
   markAllRead: () => {
     if (get().items.every((i) => i.read)) return
@@ -44,8 +51,8 @@ export function notifyUpdate(result: UpdateCheckResult): boolean {
   if (!result.ok || !result.updateAvailable) return false
   return useNotifications.getState().add({
     id: `update-${result.latest}`,
-    title: `Endora ${result.latest} est disponible`,
-    body: `Vous utilisez la version ${result.current}.`,
+    title: t('notify.updateTitle', { version: result.latest }),
+    body: t('notify.updateBody', { current: result.current }),
     ...(result.url ? { url: result.url } : {})
   })
 }

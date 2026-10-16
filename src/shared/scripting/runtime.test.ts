@@ -78,7 +78,7 @@ describe('pm.* : variables', () => {
     expect(out.mutations).toEqual([{ scope: 'environment', op: 'set', key: 'legacy', value: 'oui' }])
     expect(out.tests).toEqual([
       { name: 'code 200', passed: true },
-      { name: 'faux', passed: false, error: 'échec' }
+      { name: 'faux', passed: false, error: 'failed' }
     ])
   })
 })
@@ -180,7 +180,7 @@ describe('pre-request', () => {
 
   it('refuse skipRequest et les modules inconnus dans un script de test', async () => {
     expect((await runScripts(exec('pm.execution.skipRequest()'), hooks)).error?.message).toMatch(/TypeError/)
-    expect((await runScripts(exec('require("fs")'), hooks)).error?.message).toMatch(/n'est pas disponible/)
+    expect((await runScripts(exec('require("fs")'), hooks)).error?.message).toMatch(/is not available/)
   })
 
   it('rapporte une erreur levée dans une minuterie', async () => {

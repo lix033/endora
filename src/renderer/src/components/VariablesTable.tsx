@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 import { useRef, useState } from 'react'
 import { newId } from '@shared/model'
 import { newVariable, type Variable } from '@shared/variables'
@@ -37,20 +38,20 @@ export function VariablesTable({ values, onChange, hint }: Props) {
   return (
     <div className="variables">
       <div className="variables-tools">
-        <input className="filter" placeholder="Filtrer les variables" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input className="filter" placeholder={t('vars.filter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
         <button
           onClick={() => onChange(values.map(({ current, ...v }) => ({ ...v, value: current ?? v.value })))}
-          title="Copier chaque valeur courante dans la valeur initiale"
+          title={t('vars.persistAllTitle')}
           disabled={!values.some((v) => v.current !== undefined && v.current !== v.value)}
         >
-          Tout persister
+          {t('vars.persistAll')}
         </button>
         <button
           onClick={() => onChange(values.map(({ current: _c, ...v }) => v))}
-          title="Remplacer chaque valeur courante par la valeur initiale"
+          title={t('vars.resetAllTitle')}
           disabled={!values.some((v) => v.current !== undefined)}
         >
-          Tout réinitialiser
+          {t('vars.resetAll')}
         </button>
       </div>
       {hint && <p className="muted small">{hint}</p>}
@@ -58,10 +59,10 @@ export function VariablesTable({ values, onChange, hint }: Props) {
         <thead>
           <tr>
             <th className="kv-check" />
-            <th>Variable</th>
-            <th className="vars-type">Type</th>
-            <th>Valeur initiale</th>
-            <th>Valeur courante</th>
+            <th>{t('vars.variable')}</th>
+            <th className="vars-type">{t('vars.type')}</th>
+            <th>{t('vars.initial')}</th>
+            <th>{t('vars.current')}</th>
             <th className="kv-del" />
           </tr>
         </thead>
@@ -73,15 +74,15 @@ export function VariablesTable({ values, onChange, hint }: Props) {
             return (
               <tr key={v.id} className={v.enabled ? '' : 'disabled'}>
                 <td className="kv-check">
-                  {!isTrailing && <input type="checkbox" checked={v.enabled} onChange={(e) => update(v.id, { enabled: e.target.checked })} aria-label="Activer" />}
+                  {!isTrailing && <input type="checkbox" checked={v.enabled} onChange={(e) => update(v.id, { enabled: e.target.checked })} aria-label={t('vars.enable')} />}
                 </td>
                 <td>
-                  <input value={v.key} placeholder="Nouvelle variable" spellCheck={false} onChange={(e) => update(v.id, { key: e.target.value })} />
+                  <input value={v.key} placeholder={t('vars.new')} spellCheck={false} onChange={(e) => update(v.id, { key: e.target.value })} />
                 </td>
                 <td className="vars-type">
-                  <select value={v.type} onChange={(e) => update(v.id, { type: e.target.value as Variable['type'] })} aria-label="Type">
-                    <option value="default">défaut</option>
-                    <option value="secret">secret</option>
+                  <select value={v.type} onChange={(e) => update(v.id, { type: e.target.value as Variable['type'] })} aria-label={t('vars.type')}>
+                    <option value="default">{t('vars.default')}</option>
+                    <option value="secret">{t('vars.secret')}</option>
                   </select>
                 </td>
                 <td>
@@ -104,15 +105,15 @@ export function VariablesTable({ values, onChange, hint }: Props) {
                       onChange={(e) => update(v.id, { current: e.target.value })}
                     />
                     {v.type === 'secret' && !isTrailing && (
-                      <button className="ghost tiny" onClick={() => toggleReveal(v.id)} title={secret ? 'Afficher' : 'Masquer'}>
-                        {secret ? 'Voir' : 'Cacher'}
+                      <button className="ghost tiny" onClick={() => toggleReveal(v.id)} title={secret ? t('common.show') : t('common.hide')}>
+                        {secret ? t('vars.reveal') : t('vars.mask')}
                       </button>
                     )}
                   </div>
                 </td>
                 <td className="kv-del">
                   {!isTrailing && (
-                    <button className="ghost" onClick={() => onChange(values.filter((x) => x.id !== v.id))} aria-label="Supprimer">
+                    <button className="ghost" onClick={() => onChange(values.filter((x) => x.id !== v.id))} aria-label={t('vars.delete')}>
                       ×
                     </button>
                   )}

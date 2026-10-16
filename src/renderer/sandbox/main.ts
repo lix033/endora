@@ -2,6 +2,7 @@
 
 import CryptoJS from 'crypto-js'
 import lodash from 'lodash'
+import { setLocale } from '@shared/i18n'
 import { runMockScript, type MockScriptInput, type MockScriptOutput } from '@shared/scripting/mock-runtime'
 import { runScripts } from '@shared/scripting/runtime'
 import type { SandboxHttpRequest, SandboxHttpResult, ScriptExecution, ScriptOutcome } from '@shared/scripting/types'
@@ -18,6 +19,7 @@ interface SandboxBridge {
 const bridge = (window as unknown as { endoraSandbox: SandboxBridge }).endoraSandbox
 
 bridge.onRun((exec) => {
+  if (exec.locale) setLocale(exec.locale)
   const frame = document.createElement('iframe')
   document.body.appendChild(frame)
   const realm = frame.contentWindow as (Window & { Function: FunctionConstructor }) | null
@@ -47,6 +49,7 @@ bridge.onRun((exec) => {
 
 // Script d'un mock server : un iframe neuf par requête reçue, sans accès réseau.
 bridge.onMock((input) => {
+  if (input.locale) setLocale(input.locale)
   const frame = document.createElement('iframe')
   document.body.appendChild(frame)
   const realm = frame.contentWindow as (Window & { Function: FunctionConstructor }) | null

@@ -21,6 +21,7 @@ import {
   signOAuth2,
   type SignResult
 } from './signatures'
+import { t } from '@shared/i18n'
 
 const authError = (message: string): HttpErrorResult => ({ ok: false, code: 'auth', message, timeMs: 0 })
 
@@ -85,7 +86,7 @@ async function sendNtlm(auth: AuthConfig, p: PreparedRequest, opts: SendOptions)
     if (!negotiate.ok) return negotiate
     const type2Header = challengeHeaders(negotiate).find((h) => h.startsWith('NTLM '))
     const type2 = type2Header ? parseType2Message(type2Header) : null
-    if (!type2) return authError("NTLM : le serveur n'a pas renvoyé de message de type 2.")
+    if (!type2) return authError(t('auth.ntlmNoType2'))
 
     const type3 = createType3Message(type2, {
       username: authString(auth, 'username'),

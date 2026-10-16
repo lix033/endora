@@ -60,6 +60,8 @@ export interface ScriptSource {
 }
 
 export interface ScriptExecution {
+  /** Langue des messages (le sandbox a son propre contexte JavaScript). */
+  locale?: 'en' | 'fr'
   id: string
   event: ScriptEvent
   scripts: ScriptSource[]

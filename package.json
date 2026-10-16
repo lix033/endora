@@ -47,6 +47,7 @@
   "dependencies": {
     "aws4": "^1.13.2",
     "curl-to-postmanv2": "^1.8.7",
+    "electron-updater": "^6.8.9",
     "fast-xml-parser": "^5.11.2",
     "graphql-to-postman": "^1.0.0",
     "jose": "^6.2.12",

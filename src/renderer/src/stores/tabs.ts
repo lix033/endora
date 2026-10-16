@@ -11,6 +11,7 @@
 // Les réglages, environnements, collections et dossiers s'ouvrent aussi dans des onglets (« vues »).
 
 import { create } from 'zustand'
+import { allTranslations, t } from '@shared/i18n'
 import type { ExecutionOutput } from '@shared/execution'
 import type { HttpResult } from '@shared/http'
 import {
@@ -88,9 +89,9 @@ export function tabTitle(tab: PersistedTab): string {
   if (tab.view) {
     switch (tab.view.kind) {
       case 'settings':
-        return 'Paramètres'
+        return t('tabs.settings')
       case 'globals':
-        return 'Globales'
+        return t('tabs.globals')
       case 'environment':
         return useEnvironments.getState().environments.find((e) => e.id === (tab.view as { environmentId: string }).environmentId)?.name ?? tab.title
       case 'collection':
@@ -100,11 +101,11 @@ export function tabTitle(tab: PersistedTab): string {
         return lookupItem(ws.collections, v.collectionId, v.folderId)?.name ?? tab.title
       }
       case 'mocks':
-        return 'Services'
+        return t('tabs.services')
       case 'runner': {
         const v = tab.view
         const target = v.folderId ? lookupItem(ws.collections, v.collectionId, v.folderId)?.name : ws.collections.find((c) => c.id === v.collectionId)?.name
-        return `Runner · ${target ?? tab.title}`
+        return t('tabs.runner', { target: target ?? tab.title })
       }
     }
   }
@@ -112,6 +113,8 @@ export function tabTitle(tab: PersistedTab): string {
     const item = lookupItem(ws.collections, tab.source.collectionId, tab.source.itemId)
     if (item) return item.name
   }
+  // Titre par défaut créé dans une autre langue : affiché dans la langue courante.
+  if (!tab.source && allTranslations('tabs.untitled').includes(tab.title)) return t('tabs.untitled')
   return tab.title
 }
 
@@ -224,7 +227,7 @@ export const useTabs = create<TabsState>((set, get) => {
     },
 
     openNew: (draft, title) => {
-      const tab: Tab = { ...blank(), id: newId(), title: title ?? 'Nouvelle requête', draft: draft ?? emptyDraft(), preview: false }
+      const tab: Tab = { ...blank(), id: newId(), title: title ?? t('tabs.untitled'), draft: draft ?? emptyDraft(), preview: false }
       set({ tabs: [...get().tabs, tab], activeId: tab.id })
       return tab.id
     },
@@ -310,12 +313,12 @@ export const useTabs = create<TabsState>((set, get) => {
       if (!opts?.force && confirm && isDirty(tab)) {
         set({ activeId: id })
         const choice = await confirmDialog(
-          'Modifications non enregistrées',
-          `« ${tabTitle(tab)} » contient des modifications non enregistrées. Les enregistrer avant de fermer ?`,
+          t('common.unsavedChanges'),
+          t('tabs.unsavedMessage', { name: tabTitle(tab) }),
           [
-            { label: 'Annuler', value: 'cancel' },
-            { label: 'Ne pas enregistrer', value: 'discard', variant: 'danger' },
-            { label: 'Enregistrer', value: 'save', variant: 'primary' }
+            { label: t('common.cancel'), value: 'cancel' },
+            { label: t('common.dontSave'), value: 'discard', variant: 'danger' },
+            { label: t('common.save'), value: 'save', variant: 'primary' }
           ]
         )
         if (choice === 'cancel') return false
@@ -366,14 +369,14 @@ export const useTabs = create<TabsState>((set, get) => {
         patchTab(id, { saved: structuredClone(tab.draft), preview: false })
         return true
       }
-      const defaultName = tab.source?.kind === 'collection' ? (opts?.saveAs ? `${tabTitle(tab)} Copy` : tabTitle(tab)) : draftLabel(tab.draft)
-      const target = await saveDialog(defaultName, opts?.saveAs ? 'Enregistrer sous' : 'Enregistrer la requête')
+      const defaultName = tab.source?.kind === 'collection' ? (opts?.saveAs ? t('tabs.copySuffix', { name: tabTitle(tab) }) : tabTitle(tab)) : draftLabel(tab.draft)
+      const target = await saveDialog(defaultName, opts?.saveAs ? t('tabs.saveAs') : t('tabs.saveRequest'))
       if (!target) return false
       const current = get().tabs.find((t) => t.id === id)
       if (!current) return false
       const itemId = useWorkspace.getState().addRequest(target.collectionId, target.parentId, target.name, current.draft)
       if (!itemId) {
-        toast("Emplacement d'enregistrement introuvable.", 'error')
+        toast(t('tabs.saveLocationMissing'), 'error')
         return false
       }
       patchTab(id, {
@@ -389,7 +392,7 @@ export const useTabs = create<TabsState>((set, get) => {
       const tab = get().tabs.find((t) => t.id === id)
       if (!tab || tab.sending || tab.view) return
       if (tab.draft.url.trim() === '') {
-        toast("Saisissez une URL avant d'envoyer.", 'error')
+        toast(t('tabs.enterUrl'), 'error')
         return
       }
       const requestId = newId()
@@ -417,14 +420,14 @@ export const useTabs = create<TabsState>((set, get) => {
         .getState()
         .updateHistory(
           historyId,
-          result?.ok ? { status: result.status, timeMs: result.timeMs } : { error: result ? result.message : (output.prerequestError?.message ?? 'Non envoyée'), timeMs: result?.timeMs }
+          result?.ok ? { status: result.status, timeMs: result.timeMs } : { error: result ? result.message : (output.prerequestError?.message ?? t('tabs.notSent')), timeMs: result?.timeMs }
         )
 
       // Variables modifiées par les scripts : environnement actif, globales, collection.
       useEnvironments.getState().applyMutations(output.mutations)
       if (collection) useWorkspace.getState().applyCollectionMutations(collection.id, output.mutations)
       else if (output.mutations.some((m) => m.scope === 'collectionVariables')) {
-        toast('Variables de collection ignorées : la requête n’est pas enregistrée dans une collection.', 'error')
+        toast(t('tabs.collectionVarsIgnored'), 'error')
       }
 
       const consoleEntries: NewConsoleEntry[] = []

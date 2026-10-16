@@ -24,6 +24,7 @@ import type {
   TestResult,
   VariableMutation
 } from './types'
+import { t } from '../i18n'
 
 export interface RuntimeHooks {
   sendRequest: (req: SandboxHttpRequest) => Promise<SandboxHttpResult>
@@ -493,18 +494,18 @@ class VariableScope {
     return this.values.has(key)
   }
   set(key: string, value: unknown): void {
-    if (this.scope === 'data') throw new TypeError('Les données d’itération sont en lecture seule.')
+    if (this.scope === 'data') throw new TypeError(t('script.dataReadOnly'))
     const v = toVarValue(value)
     this.values.set(String(key), v)
     this.mutations.push({ scope: this.scope, op: 'set', key: String(key), value: v })
   }
   unset(key: string): void {
-    if (this.scope === 'data') throw new TypeError('Les données d’itération sont en lecture seule.')
+    if (this.scope === 'data') throw new TypeError(t('script.dataReadOnly'))
     this.values.delete(key)
     this.mutations.push({ scope: this.scope, op: 'unset', key })
   }
   clear(): void {
-    if (this.scope === 'data') throw new TypeError('Les données d’itération sont en lecture seule.')
+    if (this.scope === 'data') throw new TypeError(t('script.dataReadOnly'))
     this.values.clear()
     this.mutations.push({ scope: this.scope, op: 'clear' })
   }
@@ -744,7 +745,7 @@ export async function runScripts(exec: ScriptExecution, hooks: RuntimeHooks): Pr
   }
   const requireFn = (name: string) => {
     if (name in modules) return modules[name]
-    throw new Error(`Le module « ${name} » n'est pas disponible dans le sandbox Endora.`)
+    throw new Error(t('script.noModule', { name }))
   }
 
   const pm = {
@@ -844,7 +845,7 @@ export async function runScripts(exec: ScriptExecution, hooks: RuntimeHooks): Pr
     }
   }
 
-  for (const [name, value] of Object.entries(legacyTests)) tests.push({ name, passed: Boolean(value), ...(value ? {} : { error: 'échec' }) })
+  for (const [name, value] of Object.entries(legacyTests)) tests.push({ name, passed: Boolean(value), ...(value ? {} : { error: t('script.legacyFailed') }) })
 
   return {
     ok: !error,

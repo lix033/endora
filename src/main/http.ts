@@ -3,6 +3,7 @@ import { basename } from 'node:path'
 import { Agent, Client, FormData, H2CClient, request, Response, type Dispatcher } from 'undici'
 import { buildUrl, rawContentType, type HttpErrorResult, type HttpRequestSpec, type HttpResult } from '@shared/http'
 import type { ProtocolVersion } from '@shared/model'
+import { t } from '@shared/i18n'
 
 /** Requête prête à partir : c'est sur elle que l'auth signe (URL, en-têtes et body définitifs). */
 export interface PreparedRequest {
@@ -95,7 +96,7 @@ export async function prepareRequest(spec: HttpRequestSpec): Promise<{ ok: true;
           form.append(f.key, new Blob([await readFile(f.value)]), basename(f.value))
         } catch (err) {
           const reason = err instanceof Error ? err.message : String(err)
-          return fail('file', `Fichier illisible pour « ${f.key} » : ${reason}`)
+          return fail('file', t('http.fileUnreadable', { key: f.key, reason }))
         }
       }
       // Sérialise le multipart pour obtenir un corps fixe et son boundary.
@@ -182,7 +183,7 @@ export async function sendPrepared(p: PreparedRequest, opts: SendOptions = DEFAU
         size += (chunk as Buffer).byteLength
         if (opts.maxResponseBytes > 0 && size > opts.maxResponseBytes) {
           res.body.destroy()
-          return fail('too_large', `Réponse trop volumineuse (limite : ${Math.round(opts.maxResponseBytes / 1024 / 1024)} Mo, réglable dans Paramètres)`, elapsed())
+          return fail('too_large', t('http.tooLarge', { mb: Math.round(opts.maxResponseBytes / 1024 / 1024) }), elapsed())
         }
         chunks.push(chunk as Buffer)
       }
@@ -207,8 +208,8 @@ export async function sendPrepared(p: PreparedRequest, opts: SendOptions = DEFAU
       }
     }
   } catch (err) {
-    if (timeoutSignal?.aborted) return fail('timeout', `Délai dépassé (${opts.timeoutMs} ms)`, elapsed())
-    if (opts.signal?.aborted) return fail('aborted', 'Requête annulée', elapsed())
+    if (timeoutSignal?.aborted) return fail('timeout', t('http.timeout', { ms: opts.timeoutMs ?? 0 }), elapsed())
+    if (opts.signal?.aborted) return fail('aborted', t('http.aborted'), elapsed())
     const message = err instanceof Error ? (err.cause instanceof Error ? err.cause.message : err.message) : String(err)
     return fail('network', message, elapsed())
   } finally {

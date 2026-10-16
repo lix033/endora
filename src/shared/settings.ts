@@ -4,6 +4,7 @@
 // de réponse (`auto` = d'après le type MIME, ou forcé), ouverture dans un nouvel onglet,
 // confirmation à la fermeture, autocomplétion des variables.
 
+import { DEFAULT_LOCALE, isLocale, type Locale } from './i18n'
 import type { ProtocolVersion } from './model'
 import { DEFAULT_THEME_DARK, DEFAULT_THEME_LIGHT, isThemeId, type ThemeId } from './themes'
 
@@ -11,6 +12,8 @@ export type ResponseFormat = 'auto' | 'json' | 'xml' | 'html' | 'text'
 
 export interface Settings {
   general: {
+    /** Langue de l'interface (anglais par défaut). */
+    language: Locale
     httpVersion: ProtocolVersion
     /** 0 = aucun délai. */
     requestTimeoutMs: number
@@ -43,6 +46,8 @@ export interface Settings {
   }
   updates: {
     autoCheck: boolean
+    /** Petites mises à jour (correctifs) téléchargées et installées sans intervention. */
+    autoInstall: boolean
     /** Dépôt GitHub `propriétaire/nom` ou URL d'un flux JSON `{ version, url, notes }`. */
     source: string
   }
@@ -50,6 +55,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   general: {
+    language: DEFAULT_LOCALE,
     httpVersion: 'auto',
     requestTimeoutMs: 0,
     followRedirects: true,
@@ -64,7 +70,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: { mode: 'system', fixed: DEFAULT_THEME_DARK, light: DEFAULT_THEME_LIGHT, dark: DEFAULT_THEME_DARK },
   shortcuts: {},
   codegen: { language: 'curl', variant: 'cURL', resolveVariables: true, options: {} },
-  updates: { autoCheck: true, source: 'lix033/endora' }
+  updates: { autoCheck: true, autoInstall: true, source: 'lix033/endora' }
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -94,6 +100,7 @@ export function normalizeSettings(input: unknown): Settings {
   const theme = (v: unknown, fallback: ThemeId): ThemeId => (isThemeId(v) ? v : fallback)
   return {
     general: {
+      language: isLocale(g['language']) ? g['language'] : d.general.language,
       httpVersion: oneOf(g['httpVersion'], ['auto', 'http1', 'http2'] as const, d.general.httpVersion),
       requestTimeoutMs: num(g['requestTimeoutMs'], d.general.requestTimeoutMs, 0, 3_600_000),
       followRedirects: bool(g['followRedirects'], d.general.followRedirects),
@@ -120,6 +127,7 @@ export function normalizeSettings(input: unknown): Settings {
     },
     updates: {
       autoCheck: bool(u['autoCheck'], d.updates.autoCheck),
+      autoInstall: bool(u['autoInstall'], d.updates.autoInstall),
       source: typeof u['source'] === 'string' ? u['source'].trim().slice(0, 500) : d.updates.source
     }
   }

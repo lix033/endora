@@ -106,6 +106,25 @@ l'outil officiel `wingetcreate`.
 
 ## 2. Publier une version
 
+### Choisir le numéro : il décide de la mise à jour automatique
+
+Les apps installées vérifient les releases au démarrage puis toutes les 6 heures
+(`electron-updater`, fichiers `latest*.yml` publiés par la CI). Le numéro de version décide de ce
+qui se passe chez l'utilisateur :
+
+| Changement | Exemple | Chez l'utilisateur |
+|---|---|---|
+| **Correctif** (`npm version patch`) | 0.2.2 → 0.2.3 | « petite » mise à jour : téléchargée en arrière-plan et installée au prochain redémarrage, si le réglage *Installer automatiquement les petites mises à jour* est actif (par défaut). Réservé aux correctifs de bugs ou de sécurité, couleurs, petites fonctionnalités. |
+| **Mineure ou majeure** (`npm version minor` / `major`) | 0.2.x → 0.3.0 | « grosse » mise à jour : notification et bouton *Installer* ; rien n'est installé sans action de l'utilisateur. |
+| **Pré-version** | 0.3.0-beta.1 | jamais proposée automatiquement. |
+
+Conditions : app installée depuis le `.dmg`/`.zip` (macOS, **signée et notarisée**), l'installeur
+NSIS (Windows), l'AppImage, le `.deb` ou le `.rpm` (Linux). Les archives `tar.gz` et le zip Windows
+portable ne se mettent pas à jour seuls : l'app propose alors le lien de téléchargement. Une
+release en brouillon n'est jamais proposée : la mise à jour part quand la CI publie la release.
+
+### Étapes
+
 1. **Mettre à jour `CHANGELOG.md`** : renommer la section `## [Non publié]` en
    `## [0.2.0] — AAAA-MM-JJ` (ses lignes deviennent les notes de la release) et rouvrir une section vide.
 2. **Changer la version** et créer le tag :

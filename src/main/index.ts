@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import {
@@ -24,6 +25,7 @@ import { THEMES } from '@shared/themes'
 import { parseCurl } from './curl'
 import { executeRequest } from './executor'
 import { executeHttp } from './http'
+import { AutoUpdate, type UpdaterLike } from './autoupdate'
 import { MockManager } from './mock'
 import { getOAuth2Token } from './oauth2'
 import { ScriptSandbox } from './sandbox'
@@ -31,6 +33,7 @@ import { WorkspaceStorage, type SecretCipher } from './storage'
 import { checkForUpdates } from './updates'
 import { codegenLanguages, codegenOptions, generateCode } from './codegen'
 import { convertImport, fetchImport } from './importers'
+import { setLocale, t } from '@shared/i18n'
 
 const inFlight = new Map<string, AbortController>()
 const MAX_IMPORT_BYTES = 50 * 1024 * 1024
@@ -38,6 +41,7 @@ const MAX_IMPORT_BYTES = 50 * 1024 * 1024
 let storage: WorkspaceStorage
 let sandbox: ScriptSandbox
 let mocks: MockManager
+let autoUpdate: AutoUpdate
 let settings: Settings = normalizeSettings(null)
 const appWindows = new Set<number>()
 
@@ -114,7 +118,7 @@ function buildMenu(): void {
             submenu: [
               { role: 'about' as const },
               { type: 'separator' as const },
-              item('Paramètres…', 'openSettings'),
+              item(t('menu.settings'), 'openSettings'),
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
@@ -128,29 +132,29 @@ function buildMenu(): void {
         ]
       : []),
     {
-      label: 'Fichier',
+      label: t('menu.file'),
       submenu: [
-        item('Nouvel onglet', 'newTab'),
-        item('Importer…', 'import'),
+        item(t('menu.newTab'), 'newTab'),
+        item(t('menu.import'), 'import'),
         { type: 'separator' },
-        item('Enregistrer', 'save'),
-        item('Enregistrer sous…', 'saveAs'),
+        item(t('menu.save'), 'save'),
+        item(t('menu.saveAs'), 'saveAs'),
         { type: 'separator' },
-        item("Fermer l'onglet", 'closeTab'),
-        item("Rouvrir l'onglet fermé", 'reopenTab'),
-        ...(isMac ? [] : [{ type: 'separator' as const }, item('Paramètres', 'openSettings')]),
+        item(t('menu.closeTab'), 'closeTab'),
+        item(t('menu.reopenTab'), 'reopenTab'),
+        ...(isMac ? [] : [{ type: 'separator' as const }, item(t('menu.settingsPlain'), 'openSettings')]),
         { type: 'separator' },
         isMac ? { role: 'close', accelerator: 'CmdOrCtrl+Shift+W' } : { role: 'quit' }
       ]
     },
     { role: 'editMenu' },
     {
-      label: 'Affichage',
+      label: t('menu.view'),
       submenu: [
-        item('Onglet suivant', 'nextTab'),
-        item('Onglet précédent', 'previousTab'),
-        item('Barre latérale', 'toggleSidebar'),
-        item('Console', 'toggleConsole'),
+        item(t('menu.nextTab'), 'nextTab'),
+        item(t('menu.previousTab'), 'previousTab'),
+        item(t('menu.sidebar'), 'toggleSidebar'),
+        item(t('menu.console'), 'toggleConsole'),
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -175,7 +179,7 @@ function applyNativeTheme(): void {
 /** Seules les fenêtres de l'interface peuvent appeler l'API de l'app (pas la fenêtre des scripts). */
 function handle<A extends unknown[], R>(channel: string, fn: (event: IpcMainInvokeEvent, ...args: A) => R): void {
   ipcMain.handle(channel, (event, ...args) => {
-    if (!appWindows.has(event.sender.id)) throw new Error('Expéditeur non autorisé')
+    if (!appWindows.has(event.sender.id)) throw new Error(t('error.unauthorizedSender'))
     return fn(event, ...(args as A))
   })
 }
@@ -206,6 +210,7 @@ function registerIpc(): void {
   handle(IPC.workspaceLoad, async () => {
     const snapshot = await storage.load()
     settings = snapshot.settings
+    setLocale(settings.general.language)
     applyNativeTheme()
     buildMenu()
     return snapshot
@@ -224,6 +229,7 @@ function registerIpc(): void {
   handle(IPC.globalsSave, (_event, values: unknown) => storage.saveGlobals(values))
   handle(IPC.settingsSave, async (_event, next: unknown) => {
     settings = normalizeSettings(next)
+    setLocale(settings.general.language)
     applyNativeTheme()
     buildMenu()
     return storage.saveSettings(settings)
@@ -232,11 +238,11 @@ function registerIpc(): void {
   handle(IPC.fileOpenText, async (event): Promise<OpenTextResult> => {
     const win = BrowserWindow.fromWebContents(event.sender)
     const options: Electron.OpenDialogOptions = {
-      title: 'Importer',
+      title: t('dialog.import'),
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Collections, environnements et textes', extensions: ['json', 'txt', 'sh', 'curl'] },
-        { name: 'Tous les fichiers', extensions: ['*'] }
+        { name: t('dialog.importFilter'), extensions: ['json', 'txt', 'sh', 'curl'] },
+        { name: t('dialog.allFiles'), extensions: ['*'] }
       ]
     }
     const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
@@ -245,7 +251,7 @@ function registerIpc(): void {
       const files = []
       for (const path of picked.filePaths) {
         const buf = await readFile(path)
-        if (buf.byteLength > MAX_IMPORT_BYTES) throw new Error(`${basename(path)} dépasse 50 Mo`)
+        if (buf.byteLength > MAX_IMPORT_BYTES) throw new Error(t('dialog.tooLarge', { name: basename(path) }))
         files.push({ name: basename(path), text: buf.toString('utf8') })
       }
       return { ok: true, files }
@@ -256,11 +262,11 @@ function registerIpc(): void {
 
   handle(IPC.fileSaveText, async (event, defaultName: unknown, text: unknown): Promise<SaveTextResult> => {
     if (typeof defaultName !== 'string' || typeof text !== 'string') {
-      return { ok: false, canceled: false, message: 'Paramètres invalides' }
+      return { ok: false, canceled: false, message: t('error.invalidParams') }
     }
     const win = BrowserWindow.fromWebContents(event.sender)
     const options: Electron.SaveDialogOptions = {
-      title: 'Exporter',
+      title: t('dialog.export'),
       defaultPath: basename(defaultName),
       filters: [{ name: 'JSON', extensions: ['json'] }]
     }
@@ -276,7 +282,7 @@ function registerIpc(): void {
 
   handle(IPC.filePick, async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    const options: Electron.OpenDialogOptions = { title: 'Choisir un fichier', properties: ['openFile'] }
+    const options: Electron.OpenDialogOptions = { title: t('dialog.chooseFile'), properties: ['openFile'] }
     const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
     return picked.canceled ? null : (picked.filePaths[0] ?? null)
   })
@@ -317,6 +323,9 @@ function registerIpc(): void {
   handle(IPC.mockLogs, (_event, id: unknown) => mocks.getLogs(mockId(id)))
   handle(IPC.mockClearLogs, (_event, id: unknown) => mocks.clearLogs(mockId(id)))
   handle(IPC.mockResetState, (_event, id: unknown) => mocks.resetState(mockId(id)))
+  handle(IPC.updaterState, () => autoUpdate.current)
+  handle(IPC.updaterCheck, () => autoUpdate.check(true))
+  handle(IPC.updaterInstall, () => autoUpdate.install())
   handle(
     IPC.appInfo,
     (): AppInfo => ({
@@ -331,6 +340,30 @@ function registerIpc(): void {
   )
 }
 
+/** Envoie un événement à toutes les fenêtres de l'interface (pas à la fenêtre des scripts). */
+function broadcast(channel: string, payload: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) if (appWindows.has(win.webContents.id)) win.webContents.send(channel, payload)
+}
+
+/**
+ * electron-updater, seulement dans l'app empaquetée et pour les formats qui savent se mettre à jour :
+ * macOS (zip/dmg signé), Windows (NSIS), Linux AppImage, deb et rpm. Archives tar.gz et zip Windows :
+ * pas de mise à jour automatique, la notification renvoie vers la page de téléchargement.
+ */
+async function loadUpdater(): Promise<UpdaterLike | null> {
+  if (!app.isPackaged) return null
+  if (process.platform === 'linux' && !process.env['APPIMAGE'] && !existsSync(join(process.resourcesPath, 'package-type'))) return null
+  if (!existsSync(join(process.resourcesPath, 'app-update.yml'))) return null
+  try {
+    const mod = await import('electron-updater')
+    const updater = (mod.default ?? mod).autoUpdater
+    updater.logger = null
+    return updater as unknown as UpdaterLike
+  } catch {
+    return null
+  }
+}
+
 /** Chiffrement des secrets par le trousseau du système, quand il est disponible. */
 function systemCipher(): SecretCipher | null {
   if (!safeStorage.isEncryptionAvailable()) return null
@@ -343,6 +376,7 @@ function systemCipher(): SecretCipher | null {
 void app.whenReady().then(async () => {
   storage = new WorkspaceStorage(join(app.getPath('userData'), 'workspace'), systemCipher())
   settings = await storage.readSettings()
+  setLocale(settings.general.language)
   sandbox = new ScriptSandbox()
   mocks = new MockManager({
     readCollection: (id) => storage.readCollection(id),
@@ -351,15 +385,20 @@ void app.whenReady().then(async () => {
       await storage.saveMocks(configs)
     },
     // Journal et changements d'état diffusés aux fenêtres de l'interface.
-    emit: (event: MockEvent) => {
-      for (const win of BrowserWindow.getAllWindows()) if (appWindows.has(win.webContents.id)) win.webContents.send(IPC.mockEvent, event)
-    }
+    emit: (event: MockEvent) => broadcast(IPC.mockEvent, event)
   })
   if (!app.isPackaged && process.platform === 'darwin') app.dock?.setIcon(join(import.meta.dirname, '../../build/icon-512.png'))
   applyNativeTheme()
+  autoUpdate = new AutoUpdate({
+    updater: await loadUpdater(),
+    currentVersion: app.getVersion(),
+    settings: () => settings.updates,
+    emit: (state) => broadcast(IPC.updaterEvent, state)
+  })
   registerIpc()
   buildMenu()
   createWindow()
+  autoUpdate.start()
   void storage.loadMocks().then((configs) => mocks.init(configs))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().filter((w) => appWindows.has(w.webContents.id)).length === 0) createWindow()
@@ -375,6 +414,7 @@ let flushed = false
 app.on('before-quit', (event) => {
   sandbox?.dispose()
   void mocks?.dispose()
+  autoUpdate?.stop()
   if (flushed || !storage) return
   event.preventDefault()
   void storage.flush().finally(() => {

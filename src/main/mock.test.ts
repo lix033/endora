@@ -156,6 +156,6 @@ describe('MockManager', () => {
   })
 
   it('collection introuvable à la création', async () => {
-    expect(await manager.create({ name: 'X', collectionId: 'absente', publicAccess: true, autoDeploy: true, enableSession: true })).toEqual({ ok: false, message: 'Collection introuvable.' })
+    expect(await manager.create({ name: 'X', collectionId: 'absente', publicAccess: true, autoDeploy: true, enableSession: true })).toEqual({ ok: false, message: 'Collection not found.' })
   })
 })

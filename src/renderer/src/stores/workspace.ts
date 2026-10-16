@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { exportCollection, importCollection } from '@shared/collection-v21'
+import { t } from '@shared/i18n'
 import {
   cloneItem,
   duplicateName,
@@ -77,7 +78,7 @@ function persistCollection(id: string): void {
       const c = useWorkspace.getState().collections.find((x) => x.id === id)
       const op = c ? window.endora.saveCollection(id, exportCollection(c, { includeCurrentValues: true })) : window.endora.deleteCollection(id)
       void op.then((r) => {
-        if (!r.ok) toast(`Enregistrement impossible : ${r.message}`, 'error')
+        if (!r.ok) toast(t('store.saveFailed', { message: r.message }), 'error')
       })
     }, 300)
   )
@@ -91,7 +92,7 @@ export async function saveCollectionNow(id: string): Promise<boolean> {
   const c = useWorkspace.getState().collections.find((x) => x.id === id)
   if (!c) return false
   const r = await window.endora.saveCollection(id, exportCollection(c, { includeCurrentValues: true }))
-  if (!r.ok) toast(`Enregistrement impossible : ${r.message}`, 'error')
+  if (!r.ok) toast(t('store.saveFailed', { message: r.message }), 'error')
   return r.ok
 }
 
@@ -100,7 +101,7 @@ function persistHistory(): void {
   historyTimer = setTimeout(() => {
     historyTimer = null
     void window.endora.saveHistory(useWorkspace.getState().history).then((r) => {
-      if (!r.ok) toast(`Historique non enregistré : ${r.message}`, 'error')
+      if (!r.ok) toast(t('store.historyFailed', { message: r.message }), 'error')
     })
   }, 500)
 }
@@ -135,9 +136,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       for (const raw of snapshot.collections) {
         const r = importCollection(raw, { keepIds: true })
         if (r.ok) collections.push(r.collection)
-        else toast(`Collection ignorée : ${r.message}`, 'error')
+        else toast(t('store.collectionSkipped', { message: r.message }), 'error')
       }
-      for (const w of snapshot.warnings) toast(`Fichier ignoré : ${w}`, 'error')
+      for (const w of snapshot.warnings) toast(t('store.fileSkipped', { message: w }), 'error')
       collections.sort((a, b) => (isLoose(a) ? -1 : isLoose(b) ? 1 : a.name.localeCompare(b.name)))
       useSettings.getState().init(snapshot.settings)
       useEnvironments.getState().init(snapshot.environments, snapshot.globals, snapshot.session?.activeEnvironmentId ?? null)
@@ -145,7 +146,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       return snapshot.session
     },
 
-    createCollection: (name = 'Nouvelle collection') => {
+    createCollection: (name = t('tree.newCollection')) => {
       const c: Collection = { id: newId(), name, items: [], auth: null, scripts: emptyScripts(), variables: [] }
       set({ collections: [...get().collections, c] })
       persistCollection(c.id)
@@ -194,7 +195,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       persistCollection(id)
     },
 
-    addFolder: (collectionId, parentId, name = 'Nouveau dossier') =>
+    addFolder: (collectionId, parentId, name = t('tree.newFolder')) =>
       mutate(collectionId, (c) => {
         const list = containerOf(c, parentId)
         if (!list) return null
@@ -208,7 +209,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const list = containerOf(c, parentId)
         if (!list) return null
         const id = newId()
-        list.push({ type: 'request', id, name: name.trim() || 'Nouvelle requête', request: structuredClone(draft) })
+        list.push({ type: 'request', id, name: name.trim() || t('tree.newRequest'), request: structuredClone(draft) })
         return id
       }) ?? null,
 

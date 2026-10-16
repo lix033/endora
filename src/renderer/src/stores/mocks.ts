@@ -3,6 +3,7 @@
 
 import { create } from 'zustand'
 import type { MockActionResult, MockLogEntry, MockPatch, MockState, NewMockInput } from '@shared/mock'
+import { t } from '@shared/i18n'
 import { toast } from './ui'
 import { saveCollectionNow } from './workspace'
 
@@ -29,7 +30,13 @@ const LOG_LIMIT = 200
 export const useMocks = create<MocksState>((set, get) => {
   /** Applique le résultat d'une action : erreur affichée, sinon état rafraîchi. */
   async function apply(promise: Promise<MockActionResult>): Promise<MockState | null> {
-    const r = await promise
+    let r: MockActionResult
+    try {
+      r = await promise
+    } catch (err) {
+      // Exception côté process principal : signalée plutôt que de laisser l'action bloquée.
+      r = { ok: false, message: err instanceof Error ? err.message : String(err) }
+    }
     if (!r.ok) {
       toast(r.message, 'error')
       return null
@@ -47,7 +54,7 @@ export const useMocks = create<MocksState>((set, get) => {
 
     create: async (input) => {
       // Le mock lit la collection enregistrée : on n'attend pas l'enregistrement différé.
-      if (!(await saveCollectionNow(input.collectionId))) return null
+      if (!(await saveCollectionNow(input.collectionId).catch(() => false))) return null
       return apply(window.endora.mockCreate(input))
     },
 
@@ -72,7 +79,7 @@ export const useMocks = create<MocksState>((set, get) => {
     deploy: async (id) => {
       const mock = get().mocks.find((m) => m.config.id === id)
       if (mock) await saveCollectionNow(mock.config.collectionId)
-      if (await apply(window.endora.mockDeploy(id))) toast('Mock déployé avec la version actuelle de la collection.')
+      if (await apply(window.endora.mockDeploy(id))) toast(t('mocks.deployed'))
     },
 
     loadLogs: async (id) => set({ logs: { ...get().logs, [id]: await window.endora.mockLogs(id) } }),
@@ -84,7 +91,7 @@ export const useMocks = create<MocksState>((set, get) => {
 
     resetState: async (id) => {
       await window.endora.mockResetState(id)
-      toast('État des sessions réinitialisé.')
+      toast(t('mocks.stateReset'))
     }
   }
 })

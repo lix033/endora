@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { KeyValue } from '@shared/http'
+import { t } from '@shared/i18n'
 import { newId, newRow } from '@shared/model'
 import type { Scope } from '@shared/variables'
 import { VarInput } from './VarInput'
@@ -15,7 +16,7 @@ interface Props {
 }
 
 /** Tableau clé/valeur ; une ligne vide virtuelle en fin de liste permet d'en ajouter une. */
-export function KeyValueEditor({ rows, onChange, keyPlaceholder = 'Clé', allowFiles = false, scopes = [] }: Props) {
+export function KeyValueEditor({ rows, onChange, keyPlaceholder = t('kv.key'), allowFiles = false, scopes = [] }: Props) {
   // La ligne virtuelle devient réelle avec le même identifiant : la saisie garde le focus.
   const trailingId = useRef(newId())
   const TRAILING = trailingId.current
@@ -47,7 +48,7 @@ export function KeyValueEditor({ rows, onChange, keyPlaceholder = 'Clé', allowF
                     type="checkbox"
                     checked={r.enabled}
                     onChange={(e) => update(r.id, { enabled: e.target.checked })}
-                    aria-label="Activer"
+                    aria-label={t('kv.enable')}
                   />
                 )}
               </td>
@@ -59,10 +60,10 @@ export function KeyValueEditor({ rows, onChange, keyPlaceholder = 'Clé', allowF
                   <select
                     value={isFile ? 'file' : 'text'}
                     onChange={(e) => update(r.id, e.target.value === 'file' ? { kind: 'file', value: '' } : { kind: 'text', value: '' })}
-                    aria-label="Type"
+                    aria-label={t('kv.type')}
                   >
-                    <option value="text">Texte</option>
-                    <option value="file">Fichier</option>
+                    <option value="text">{t('kv.text')}</option>
+                    <option value="file">{t('kv.file')}</option>
                   </select>
                 </td>
               )}
@@ -70,19 +71,19 @@ export function KeyValueEditor({ rows, onChange, keyPlaceholder = 'Clé', allowF
                 {isFile ? (
                   <div className="kv-file">
                     <span className={r.value ? '' : 'muted'} title={r.value}>
-                      {r.value || 'Aucun fichier'}
+                      {r.value || t('kv.noFile')}
                     </span>
                     <button className="ghost" onClick={() => void pick(r.id)}>
-                      Choisir…
+                      {t('kv.chooseFile')}
                     </button>
                   </div>
                 ) : (
-                  <VarInput value={r.value} placeholder="Valeur" scopes={scopes} onChange={(value) => update(r.id, { value })} />
+                  <VarInput value={r.value} placeholder={t('kv.value')} scopes={scopes} onChange={(value) => update(r.id, { value })} />
                 )}
               </td>
               <td className="kv-del">
                 {!isTrailing && (
-                  <button className="ghost" onClick={() => remove(r.id)} aria-label="Supprimer">
+                  <button className="ghost" onClick={() => remove(r.id)} aria-label={t('kv.delete')}>
                     ×
                   </button>
                 )}

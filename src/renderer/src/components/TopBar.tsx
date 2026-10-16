@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { t } from '@shared/i18n'
 import logo from '../assets/logo.svg'
 import { useNotifications } from '../stores/notifications'
 import { useTabs } from '../stores/tabs'
@@ -35,9 +36,9 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   const { items, dismiss } = useNotifications()
   return (
     <Popover onClose={onClose} className="notifications">
-      <div className="popover-head">Notifications</div>
+      <div className="popover-head">{t('top.notifications')}</div>
       {items.length === 0 ? (
-        <p className="popover-empty muted">Aucune notification.</p>
+        <p className="popover-empty muted">{t('top.noNotifications')}</p>
       ) : (
         <ul className="notification-list">
           {items.map((n) => (
@@ -45,9 +46,21 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
               <div className="notification-title">{n.title}</div>
               {n.body && <div className="muted small">{n.body}</div>}
               <div className="row tight">
-                {n.url && (
+                {n.actions?.map((a) => (
+                  <button
+                    key={a.label}
+                    className={`${a.primary ? 'primary ' : ''}small-btn`}
+                    onClick={() => {
+                      a.run()
+                      onClose()
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+                {!n.actions && n.url && (
                   <button className="primary small-btn" onClick={() => void window.endora.openExternal(n.url!)}>
-                    Télécharger
+                    {t('top.download')}
                   </button>
                 )}
                 <button
@@ -57,11 +70,11 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
                     onClose()
                   }}
                 >
-                  Détails
+                  {t('top.details')}
                 </button>
                 <span className="spacer" />
                 <button className="ghost small" onClick={() => dismiss(n.id)}>
-                  Ignorer
+                  {t('top.dismiss')}
                 </button>
               </div>
             </li>
@@ -93,8 +106,8 @@ export function TopBar() {
         <button
           className={`topbar-btn ${panel === 'workspace' ? 'on' : ''}`}
           onClick={() => toggle('workspace')}
-          title="Espaces de travail"
-          aria-label="Espaces de travail"
+          title={t('top.workspaces')}
+          aria-label={t('top.workspaces')}
           aria-haspopup="dialog"
           aria-expanded={panel === 'workspace'}
         >
@@ -102,16 +115,16 @@ export function TopBar() {
         </button>
         {panel === 'workspace' && (
           <Popover onClose={close}>
-            <div className="popover-head">Espaces de travail</div>
-            <p className="popover-empty muted">Bientôt disponible.</p>
+            <div className="popover-head">{t('top.workspaces')}</div>
+            <p className="popover-empty muted">{t('top.workspacesSoon')}</p>
           </Popover>
         )}
       </div>
       <button
         className="topbar-btn"
         onClick={() => useTabs.getState().openView({ kind: 'mocks' })}
-        title={runningMocks > 0 ? `Services : ${runningMocks} mock${runningMocks > 1 ? 's' : ''} en marche` : 'Services (mock servers)'}
-        aria-label="Services"
+        title={runningMocks > 0 ? t('top.servicesRunning', { count: runningMocks }) : t('top.servicesTitle')}
+        aria-label={t('top.services')}
       >
         <ServicesIcon />
         {runningMocks > 0 && <span className="topbar-dot" />}
@@ -120,8 +133,8 @@ export function TopBar() {
         <button
           className={`topbar-btn ${panel === 'notifications' ? 'on' : ''}`}
           onClick={() => toggle('notifications')}
-          title="Notifications"
-          aria-label={unread > 0 ? `Notifications (${unread} non lues)` : 'Notifications'}
+          title={t('top.notifications')}
+          aria-label={unread > 0 ? t('top.notificationsUnread', { count: unread }) : t('top.notifications')}
           aria-haspopup="dialog"
           aria-expanded={panel === 'notifications'}
         >
@@ -130,7 +143,7 @@ export function TopBar() {
         </button>
         {panel === 'notifications' && <NotificationsPanel onClose={close} />}
       </div>
-      <button className="topbar-btn" onClick={() => useTabs.getState().openSettings()} title="Paramètres" aria-label="Paramètres">
+      <button className="topbar-btn" onClick={() => useTabs.getState().openSettings()} title={t('common.settings')} aria-label={t('common.settings')}>
         <GearIcon />
       </button>
     </header>

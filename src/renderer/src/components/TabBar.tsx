@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react'
+import { t } from '@shared/i18n'
 import type { TabView } from '@shared/model'
 import { useEnvironments } from '../stores/environments'
 import { useWorkspace } from '../stores/workspace'
@@ -75,23 +76,23 @@ export function TabBar() {
         }}
         onDrop={(e) => drop(e, null)}
       >
-        {tabs.map((t, index) => {
-          const dirty = isDirty(t)
-          const title = tabTitle(t)
-          const renamable = canRename(t)
-          const hint = dropHint?.id === t.id ? `drop-${dropHint.side}` : ''
+        {tabs.map((tab, index) => {
+          const dirty = isDirty(tab)
+          const title = tabTitle(tab)
+          const renamable = canRename(tab)
+          const hint = dropHint?.id === tab.id ? `drop-${dropHint.side}` : ''
           return (
             <div
-              key={t.id}
+              key={tab.id}
               role="tab"
-              aria-selected={t.id === activeId}
-              className={`tab ${t.id === activeId ? 'active' : ''} ${t.preview ? 'preview' : ''} ${dragging === t.id ? 'dragging' : ''} ${hint}`}
+              aria-selected={tab.id === activeId}
+              className={`tab ${tab.id === activeId ? 'active' : ''} ${tab.preview ? 'preview' : ''} ${dragging === tab.id ? 'dragging' : ''} ${hint}`}
               title={title}
-              draggable={renaming !== t.id}
+              draggable={renaming !== tab.id}
               onDragStart={(e) => {
-                e.dataTransfer.setData(DRAG_TYPE, t.id)
+                e.dataTransfer.setData(DRAG_TYPE, tab.id)
                 e.dataTransfer.effectAllowed = 'move'
-                setDragging(t.id)
+                setDragging(tab.id)
               }}
               onDragEnd={endDrag}
               onDragOver={(e) => {
@@ -99,37 +100,37 @@ export function TabBar() {
                 e.preventDefault()
                 e.stopPropagation()
                 e.dataTransfer.dropEffect = 'move'
-                showHint({ id: t.id, side: sideOf(e) })
+                showHint({ id: tab.id, side: sideOf(e) })
               }}
-              onDrop={(e) => drop(e, sideOf(e) === 'after' ? (tabs[index + 1]?.id ?? null) : t.id)}
-              onClick={() => actions.activate(t.id)}
-              onDoubleClick={() => (renamable ? startRename(t.id) : actions.pin(t.id))}
+              onDrop={(e) => drop(e, sideOf(e) === 'after' ? (tabs[index + 1]?.id ?? null) : tab.id)}
+              onClick={() => actions.activate(tab.id)}
+              onDoubleClick={() => (renamable ? startRename(tab.id) : actions.pin(tab.id))}
               onAuxClick={(e) => {
-                if (e.button === 1) void actions.close(t.id)
+                if (e.button === 1) void actions.close(tab.id)
               }}
               onContextMenu={(e) =>
                 openMenu(e, [
-                  { label: 'Renommer', onSelect: () => startRename(t.id), disabled: !renamable },
-                  { label: 'Dupliquer l’onglet', onSelect: () => actions.duplicate(t.id), disabled: Boolean(t.view) },
+                  { label: t('common.rename'), onSelect: () => startRename(tab.id), disabled: !renamable },
+                  { label: t('tabs.duplicate'), onSelect: () => actions.duplicate(tab.id), disabled: Boolean(tab.view) },
                   'separator',
-                  { label: 'Fermer', onSelect: () => void actions.close(t.id) },
-                  { label: 'Fermer sans enregistrer', onSelect: () => void actions.close(t.id, { force: true }), disabled: !dirty },
-                  { label: 'Fermer les autres onglets', onSelect: () => void actions.closeOthers(t.id), disabled: tabs.length < 2 },
-                  { label: 'Fermer tous les onglets', onSelect: () => void actions.closeAll() }
+                  { label: t('common.close'), onSelect: () => void actions.close(tab.id) },
+                  { label: t('tabs.closeForce'), onSelect: () => void actions.close(tab.id, { force: true }), disabled: !dirty },
+                  { label: t('tabs.closeOthers'), onSelect: () => void actions.closeOthers(tab.id), disabled: tabs.length < 2 },
+                  { label: t('tabs.closeAll'), onSelect: () => void actions.closeAll() }
                 ])
               }
             >
-              {t.view ? (
-                <span className="tab-method view-badge">{VIEW_BADGE[t.view.kind]}</span>
+              {tab.view ? (
+                <span className="tab-method view-badge">{VIEW_BADGE[tab.view.kind]}</span>
               ) : (
-                <span className={`tab-method m-${t.draft.method}`}>{t.draft.method}</span>
+                <span className={`tab-method m-${tab.draft.method}`}>{tab.draft.method}</span>
               )}
-              {renaming === t.id ? (
+              {renaming === tab.id ? (
                 <RenameInput
                   initial={title}
                   onDone={(name) => {
                     setRenaming(null)
-                    if (name !== null) actions.rename(t.id, name)
+                    if (name !== null) actions.rename(tab.id, name)
                   }}
                 />
               ) : (
@@ -137,10 +138,10 @@ export function TabBar() {
               )}
               <button
                 className={`tab-close ${dirty ? 'dirty' : ''}`}
-                aria-label="Fermer l’onglet"
+                aria-label={t('tabs.close')}
                 onClick={(e) => {
                   e.stopPropagation()
-                  void actions.close(t.id)
+                  void actions.close(tab.id)
                 }}
               >
                 <span className="dirty-dot" />
@@ -150,7 +151,7 @@ export function TabBar() {
           )
         })}
       </div>
-      <button className="ghost tab-new" onClick={() => actions.openNew()} title="Nouvel onglet" aria-label="Nouvel onglet">
+      <button className="ghost tab-new" onClick={() => actions.openNew()} title={t('tabs.new')} aria-label={t('tabs.new')}>
         +
       </button>
       <div className="tabbar-spacer" />

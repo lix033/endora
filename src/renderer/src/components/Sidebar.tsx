@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '@shared/i18n'
 import { sidebarSearchRef } from '../shortcuts'
 import { useEnvironments } from '../stores/environments'
 import { useTabs } from '../stores/tabs'
@@ -19,16 +20,16 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <button className="small-btn" onClick={() => openImportDialog()} title="Importer une collection, un environnement ou un cURL">
-          Importer
+        <button className="small-btn" onClick={() => openImportDialog()} title={t('sidebar.importTitle')}>
+          {t('common.import')}
         </button>
       </div>
       <nav className="tabs sidebar-tabs">
         {(
           [
-            ['collections', 'Collections'],
-            ['environments', 'Environnements'],
-            ['history', 'Historique']
+            ['collections', t('sidebar.collections')],
+            ['environments', t('sidebar.environments')],
+            ['history', t('sidebar.history')]
           ] as const
         ).map(([id, label]) => (
           <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}>
@@ -40,14 +41,14 @@ export function Sidebar() {
         {view === 'collections' && (
           <button
             className="ghost icon-btn"
-            title="Créer"
-            aria-label="Créer"
+            title={t('sidebar.create')}
+            aria-label={t('sidebar.create')}
             onClick={(e) =>
               openMenu(e, [
-                { label: 'Nouvelle requête (sans collection)', onSelect: () => newLooseRequest() },
-                { label: 'Nouvelle collection', onSelect: () => newCollection() },
+                { label: t('sidebar.newLooseRequest'), onSelect: () => newLooseRequest() },
+                { label: t('sidebar.newCollection'), onSelect: () => newCollection() },
                 'separator',
-                { label: 'Onglet de requête temporaire', onSelect: () => useTabs.getState().openNew() }
+                { label: t('sidebar.tempTab'), onSelect: () => useTabs.getState().openNew() }
               ])
             }
           >
@@ -57,19 +58,19 @@ export function Sidebar() {
         {view === 'environments' && (
           <button
             className="ghost icon-btn"
-            onClick={() => useTabs.getState().openView({ kind: 'environment', environmentId: useEnvironments.getState().create().id })}
-            title="Nouvel environnement"
-            aria-label="Nouvel environnement"
+            onClick={() => useTabs.getState().openView({ kind: 'environment', environmentId: useEnvironments.getState().create(t('env.newName')).id })}
+            title={t('sidebar.newEnvironment')}
+            aria-label={t('sidebar.newEnvironment')}
           >
             +
           </button>
         )}
         {view === 'history' && (
           <button className="ghost small" onClick={() => void clearHistory()} disabled={historyCount === 0}>
-            Tout effacer
+            {t('common.clearAll')}
           </button>
         )}
-        <input ref={sidebarSearchRef} className="filter" value={filter} placeholder="Filtrer" onChange={(e) => setFilter(e.target.value)} />
+        <input ref={sidebarSearchRef} className="filter" value={filter} placeholder={t('sidebar.filter')} onChange={(e) => setFilter(e.target.value)} />
       </div>
       <div className="sidebar-body">
         {view === 'collections' && <CollectionsTree filter={filter} />}

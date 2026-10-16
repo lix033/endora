@@ -5,6 +5,7 @@ import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
 import { javascript } from '@codemirror/lang-javascript'
 import { effectiveAuth } from '@shared/auth'
+import { t } from '@shared/i18n'
 import { importRequest } from '@shared/collection-v21'
 import { generateCurl, isCurlCommand } from '@shared/curl'
 import { HTTP_METHODS } from '@shared/http'
@@ -27,7 +28,7 @@ const languageExtension = { json: [json()], xml: [xml()], html: [html()], text: 
 
 export async function copyAsCurl(draft: RequestDraft): Promise<void> {
   await window.endora.writeClipboard(generateCurl(draft))
-  toast('Commande cURL copiée')
+  toast(t('req.curlCopied'))
 }
 
 export function RequestPanel({ tab }: { tab: Tab }) {
@@ -57,7 +58,7 @@ export function RequestPanel({ tab }: { tab: Tab }) {
     void window.endora.parseCurl(text).then((r) => {
       setConverting(false)
       if (!r.ok) {
-        toast(`cURL non reconnu : ${r.message}`, 'error')
+        toast(t('req.curlInvalid', { message: r.message }), 'error')
         return
       }
       replaceDraft(tab.id, importRequest(r.request))
@@ -87,40 +88,40 @@ export function RequestPanel({ tab }: { tab: Tab }) {
           inputRef={urlInputRef}
           value={d.url}
           scopes={scopes}
-          placeholder="Saisir une URL ou coller une commande cURL"
+          placeholder={t('req.urlPlaceholder')}
           onPaste={onPaste}
           ariaLabel="URL"
           onChange={(url) => edit((x) => ({ ...x, url, params: paramsFromUrl(url, x.params) }))}
         />
         <button type="submit" className={tab.sending ? 'danger' : 'primary'}>
-          {tab.sending ? 'Annuler' : 'Envoyer'}
+          {tab.sending ? t('req.cancel') : t('req.send')}
         </button>
-        <button type="button" onClick={() => void save(tab.id)} title="Enregistrer" className={isDirty(tab) ? 'dirty-save' : ''}>
-          Enregistrer
+        <button type="button" onClick={() => void save(tab.id)} title={t('req.save')} className={isDirty(tab) ? 'dirty-save' : ''}>
+          {t('req.save')}
         </button>
-        <button type="button" className={codePanel ? 'on-outline' : ''} onClick={() => useLayout.getState().toggleCodePanel()} title="Générer le code de cette requête">
-          {'</>'} Code
+        <button type="button" className={codePanel ? 'on-outline' : ''} onClick={() => useLayout.getState().toggleCodePanel()} title={t('req.codeTitle')}>
+          {'</>'} {t('req.code')}
         </button>
       </form>
 
       <nav className="tabs">
         <button className={section === 'params' ? 'active' : ''} onClick={() => setSection('params')}>
-          Params {count(d.params) > 0 && <span className="badge">{count(d.params)}</span>}
+          {t('req.params')} {count(d.params) > 0 && <span className="badge">{count(d.params)}</span>}
         </button>
         <button className={section === 'auth' ? 'active' : ''} onClick={() => setSection('auth')}>
-          Autorisation {d.auth && d.auth.type !== 'noauth' && <span className="dot" />}
+          {t('req.authorization')} {d.auth && d.auth.type !== 'noauth' && <span className="dot" />}
         </button>
         <button className={section === 'headers' ? 'active' : ''} onClick={() => setSection('headers')}>
-          En-têtes {count(d.headers) > 0 && <span className="badge">{count(d.headers)}</span>}
+          {t('req.headers')} {count(d.headers) > 0 && <span className="badge">{count(d.headers)}</span>}
         </button>
         <button className={section === 'body' ? 'active' : ''} onClick={() => setSection('body')}>
-          Body {d.body.mode !== 'none' && <span className="dot" />}
+          {t('req.body')} {d.body.mode !== 'none' && <span className="dot" />}
         </button>
         <button className={section === 'scripts' ? 'active' : ''} onClick={() => setSection('scripts')}>
-          Scripts {hasScripts && <span className="dot" />}
+          {t('req.scripts')} {hasScripts && <span className="dot" />}
         </button>
         <button className={section === 'settings' ? 'active' : ''} onClick={() => setSection('settings')}>
-          Paramètres {d.protocolVersion && <span className="dot" />}
+          {t('req.settings')} {d.protocolVersion && <span className="dot" />}
         </button>
       </nav>
 
@@ -129,14 +130,14 @@ export function RequestPanel({ tab }: { tab: Tab }) {
           <KeyValueEditor rows={d.params} scopes={scopes} onChange={(params) => edit((x) => ({ ...x, params, url: urlWithParams(x.url, params) }))} />
         )}
         {section === 'auth' && <AuthEditor auth={d.auth} allowInherit inherited={inherited} scopes={scopes} onChange={(auth) => edit((x) => ({ ...x, auth }))} />}
-        {section === 'headers' && <KeyValueEditor rows={d.headers} scopes={scopes} onChange={(headers) => edit((x) => ({ ...x, headers }))} keyPlaceholder="En-tête" />}
+        {section === 'headers' && <KeyValueEditor rows={d.headers} scopes={scopes} onChange={(headers) => edit((x) => ({ ...x, headers }))} keyPlaceholder={t('req.headerKey')} />}
         {section === 'body' && (
           <div className="body-editor">
             <div className="body-modes">
               {(['none', 'raw', 'urlencoded', 'formdata'] as const satisfies readonly BodyMode[]).map((m) => (
                 <label key={m}>
                   <input type="radio" checked={d.body.mode === m} onChange={() => editBody({ mode: m })} />
-                  {{ none: 'aucun', raw: 'raw', urlencoded: 'x-www-form-urlencoded', formdata: 'form-data' }[m]}
+                  {{ none: t('req.bodyNone'), raw: 'raw', urlencoded: 'x-www-form-urlencoded', formdata: 'form-data' }[m]}
                 </label>
               ))}
               {d.body.mode === 'raw' && (
@@ -144,16 +145,16 @@ export function RequestPanel({ tab }: { tab: Tab }) {
                   <option value="json">JSON</option>
                   <option value="xml">XML</option>
                   <option value="html">HTML</option>
-                  <option value="text">Texte</option>
+                  <option value="text">{t('req.bodyText')}</option>
                   <option value="javascript">JavaScript</option>
                 </select>
               )}
             </div>
             {d.body.mode === 'none' &&
               (d.extra?.['body'] ? (
-                <p className="muted">Ce type de body (importé) sera pris en charge dans une prochaine version ; il est conservé à l'export.</p>
+                <p className="muted">{t('req.bodyUnsupported')}</p>
               ) : (
-                <p className="muted">Cette requête n'a pas de body.</p>
+                <p className="muted">{t('req.noBody')}</p>
               ))}
             {d.body.mode === 'raw' && (
               <CodeMirror
@@ -172,7 +173,7 @@ export function RequestPanel({ tab }: { tab: Tab }) {
         {section === 'scripts' && <ScriptsEditor scripts={d.scripts} editorKey={tab.id} onChange={(scripts) => edit((x) => ({ ...x, scripts }))} />}
         {section === 'settings' && (
           <div className="form-grid">
-            <label>Version HTTP</label>
+            <label>{t('req.httpVersion')}</label>
             <div>
               <select
                 value={d.protocolVersion ?? 'default'}
@@ -184,12 +185,12 @@ export function RequestPanel({ tab }: { tab: Tab }) {
                   })
                 }}
               >
-                <option value="default">Réglage global</option>
-                <option value="auto">Auto (négociation)</option>
+                <option value="default">{t('req.httpVersionGlobal')}</option>
+                <option value="auto">{t('req.httpVersionAuto')}</option>
                 <option value="http1">HTTP/1.x</option>
                 <option value="http2">HTTP/2</option>
               </select>
-              <p className="muted small">HTTP/2 est négocié via ALPN en https ; en http, il est utilisé en clair (h2c) quand il est forcé.</p>
+              <p className="muted small">{t('req.httpVersionHint')}</p>
             </div>
           </div>
         )}

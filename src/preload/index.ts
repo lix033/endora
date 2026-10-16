@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC, type EndoraApi, type MenuAction } from '@shared/api'
 import type { MockEvent } from '@shared/mock'
+import type { UpdaterState } from '@shared/updates'
 
 const api: EndoraApi = {
   sendHttp: (requestId, spec) => ipcRenderer.invoke(IPC.httpSend, requestId, spec),
@@ -46,6 +47,15 @@ const api: EndoraApi = {
     const handler = (_event: IpcRendererEvent, e: MockEvent) => listener(e)
     ipcRenderer.on(IPC.mockEvent, handler)
     return () => ipcRenderer.removeListener(IPC.mockEvent, handler)
+  },
+
+  updaterState: () => ipcRenderer.invoke(IPC.updaterState),
+  updaterCheck: () => ipcRenderer.invoke(IPC.updaterCheck),
+  updaterInstall: () => ipcRenderer.invoke(IPC.updaterInstall),
+  onUpdaterState: (listener) => {
+    const handler = (_event: IpcRendererEvent, state: UpdaterState) => listener(state)
+    ipcRenderer.on(IPC.updaterEvent, handler)
+    return () => ipcRenderer.removeListener(IPC.updaterEvent, handler)
   },
 
   onMenuAction: (listener) => {

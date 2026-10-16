@@ -10,6 +10,7 @@
 // Module pur : l'exécution réelle (process principal) est injectée, ce qui le rend testable.
 
 import type { ExecutionInput, ExecutionOutput, ParentContext } from './execution'
+import { t } from './i18n'
 import { findItem, folderPath, type Collection, type RequestItem, type TreeItem } from './model'
 import type { TestResult, VariableMutation } from './scripting/types'
 import type { Settings } from './settings'
@@ -183,17 +184,17 @@ const asText = (v: unknown): string => (typeof v === 'string' ? v : v === null |
 /** Lit un fichier de données : tableau JSON d'objets, ou CSV avec une ligne d'en-tête. */
 export function parseDataFile(fileName: string, text: string): DataParseResult {
   const trimmed = text.replace(/^﻿/, '').trim()
-  if (trimmed === '') return { ok: false, message: 'Le fichier de données est vide.' }
+  if (trimmed === '') return { ok: false, message: t('run.dataEmpty') }
   const looksJson = /\.json$/i.test(fileName) || trimmed.startsWith('[') || trimmed.startsWith('{')
   if (looksJson) {
     let parsed: unknown
     try {
       parsed = JSON.parse(trimmed)
     } catch (err) {
-      return { ok: false, message: `JSON invalide : ${(err as Error).message}` }
+      return { ok: false, message: t('run.dataJsonInvalid', { message: (err as Error).message }) }
     }
     if (!Array.isArray(parsed) || !parsed.every((r) => typeof r === 'object' && r !== null && !Array.isArray(r))) {
-      return { ok: false, message: 'Le fichier JSON doit contenir un tableau d’objets ([{ "clé": "valeur" }, …]).' }
+      return { ok: false, message: t('run.dataJsonShape') }
     }
     return {
       ok: true,
@@ -203,7 +204,7 @@ export function parseDataFile(fileName: string, text: string): DataParseResult {
   }
   const table = parseCsv(trimmed)
   const [header, ...lines] = table
-  if (!header || header.every((h) => h.trim() === '')) return { ok: false, message: 'Le fichier CSV doit commencer par une ligne d’en-têtes.' }
+  if (!header || header.every((h) => h.trim() === '')) return { ok: false, message: t('run.dataCsvHeader') }
   const keys = header.map((h) => h.trim())
   return { ok: true, format: 'csv', rows: lines.map((cells) => Object.fromEntries(keys.map((k, i) => [k, cells[i] ?? '']))) }
 }
@@ -250,7 +251,7 @@ export async function runCollection(
   let vars: RunVariables = { ...initial }
   const rows = options.data?.rows ?? []
   const iterations = Math.max(1, Math.floor(options.iterations))
-  if (order.length === 0) return { status: 'error', results, variables: vars, message: 'Aucune requête sélectionnée.' }
+  if (order.length === 0) return { status: 'error', results, variables: vars, message: t('run.noneSelected') }
 
   for (let iteration = 0; iteration < iterations; iteration++) {
     deps.onIteration?.(iteration)
@@ -260,7 +261,7 @@ export async function runCollection(
     while (index < order.length) {
       if (deps.stopped()) return { status: 'stopped', results, variables: vars }
       if (++steps > MAX_STEPS_PER_ITERATION) {
-        return { status: 'error', results, variables: vars, message: `Plus de ${MAX_STEPS_PER_ITERATION} requêtes dans une itération : boucle de setNextRequest ?` }
+        return { status: 'error', results, variables: vars, message: t('run.loop', { max: MAX_STEPS_PER_ITERATION }) }
       }
       const planItem = order[index]!
       const found = findItem(collection.items, planItem.itemId)
@@ -314,7 +315,7 @@ export async function runCollection(
 
       if (r && !r.ok && r.code === 'aborted') return { status: 'stopped', results, variables: vars }
       if (options.stopOnError && (result.error || result.scriptError)) {
-        return { status: 'error', results, variables: vars, message: `Arrêt sur erreur : ${result.error ?? result.scriptError!.message}` }
+        return { status: 'error', results, variables: vars, message: t('run.stoppedOnError', { message: result.error ?? result.scriptError!.message }) }
       }
 
       if (out.nextRequest === null) break

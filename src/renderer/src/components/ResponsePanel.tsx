@@ -4,6 +4,7 @@ import { json } from '@codemirror/lang-json'
 import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
 import { exportRequest } from '@shared/collection-v21'
+import { t } from '@shared/i18n'
 import type { HttpResponseResult } from '@shared/http'
 import type { ResponseFormat } from '@shared/settings'
 import type { TestResult } from '@shared/scripting/types'
@@ -22,9 +23,9 @@ function decode(base64: string): string {
 }
 
 function formatSize(n: number): string {
-  if (n < 1024) return `${n} o`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} Ko`
-  return `${(n / 1024 / 1024).toFixed(2)} Mo`
+  if (n < 1024) return t('res.bytes', { n })
+  if (n < 1024 * 1024) return t('res.kb', { n: (n / 1024).toFixed(1) })
+  return t('res.mb', { n: (n / 1024 / 1024).toFixed(2) })
 }
 
 /** Format affiché : déduit du type MIME en mode auto (comportement de référence), sinon forcé. */
@@ -41,24 +42,24 @@ export function kindOf(contentType: string | null, setting: ResponseFormat): Kin
 export function ResponsePanel({ tab }: { tab: Tab }) {
   const { result, sending, outcome } = tab
 
-  if (sending) return <section className="response empty">Envoi de la requête…</section>
+  if (sending) return <section className="response empty">{t('res.sending')}</section>
   if (outcome?.prerequestError) {
     return (
       <section className="response empty error">
-        <strong>Erreur dans le script exécuté avant la requête</strong>
+        <strong>{t('res.prerequestError')}</strong>
         <span className="mono">{outcome.prerequestError.message}</span>
-        <span className="muted small">Source : {outcome.prerequestError.source}. La requête n’a pas été envoyée.</span>
+        <span className="muted small">{t('res.prerequestSource', { source: outcome.prerequestError.source })}</span>
       </section>
     )
   }
   if (outcome?.skipped) {
-    return <section className="response empty">La requête n’a pas été envoyée : un script a appelé pm.execution.skipRequest().</section>
+    return <section className="response empty">{t('res.skipped')}</section>
   }
-  if (!result) return <section className="response empty">Saisissez une URL et cliquez sur Envoyer pour obtenir une réponse.</section>
+  if (!result) return <section className="response empty">{t('res.empty')}</section>
   if (!result.ok) {
     return (
       <section className="response empty error">
-        <strong>Impossible d'obtenir une réponse</strong>
+        <strong>{t('res.failed')}</strong>
         <span>{result.message}</span>
       </section>
     )
@@ -88,35 +89,35 @@ function saveAsExample(tab: Tab, result: HttpResponseResult, body: string, langu
     cookie: [],
     body
   })
-  toast(ok ? `Exemple « ${name} » enregistré : les mock servers de la collection le servent.` : 'Requête introuvable dans la collection.', ok ? 'info' : 'error')
+  toast(ok ? t('res.exampleSaved', { name }) : t('res.exampleMissing'), ok ? 'info' : 'error')
 }
 
 function TestsView({ tests, testError }: { tests: TestResult[]; testError?: { message: string; source: string } }) {
   const [filter, setFilter] = useState<'all' | 'passed' | 'failed' | 'skipped'>('all')
-  const visible = tests.filter((t) =>
-    filter === 'all' ? true : filter === 'skipped' ? t.skipped : filter === 'passed' ? t.passed && !t.skipped : !t.passed
+  const visible = tests.filter((x) =>
+    filter === 'all' ? true : filter === 'skipped' ? x.skipped : filter === 'passed' ? x.passed && !x.skipped : !x.passed
   )
   return (
     <div className="tests-view">
       {testError && (
         <div className="test-error">
-          Erreur dans le script de test ({testError.source}) : <span className="mono">{testError.message}</span>
+          {t('tests.scriptError')} ({testError.source}) : <span className="mono">{testError.message}</span>
         </div>
       )}
       <nav className="tests-filter">
         {(['all', 'passed', 'skipped', 'failed'] as const).map((f) => (
           <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
-            {{ all: 'Tous', passed: 'Réussis', skipped: 'Ignorés', failed: 'Échoués' }[f]}
+            {{ all: t('tests.all'), passed: t('tests.passed'), skipped: t('tests.skipped'), failed: t('tests.failed') }[f]}
           </button>
         ))}
       </nav>
-      {tests.length === 0 && <p className="muted">Aucun test pour cette requête. Ajoutez-en dans l’onglet Scripts, phase « Après la réponse ».</p>}
+      {tests.length === 0 && <p className="muted">{t('tests.none')}</p>}
       <ul className="tests-list">
-        {visible.map((t, i) => (
+        {visible.map((x, i) => (
           <li key={i}>
-            <span className={`test-badge ${t.skipped ? 'skipped' : t.passed ? 'pass' : 'fail'}`}>{t.skipped ? 'IGNORÉ' : t.passed ? 'RÉUSSI' : 'ÉCHEC'}</span>
-            <span>{t.name}</span>
-            {t.error && <span className="test-msg mono">{t.error}</span>}
+            <span className={`test-badge ${x.skipped ? 'skipped' : x.passed ? 'pass' : 'fail'}`}>{x.skipped ? t('tests.badgeSkipped') : x.passed ? t('tests.badgePass') : t('tests.badgeFail')}</span>
+            <span>{x.name}</span>
+            {x.error && <span className="test-msg mono">{x.error}</span>}
           </li>
         ))}
       </ul>
@@ -139,8 +140,8 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
   }, [text, kind])
   const ext = kind === 'json' ? [json()] : kind === 'xml' ? [xml()] : kind === 'html' ? [html()] : []
   const statusClass = result.status < 300 ? 'ok' : result.status < 400 ? 'redirect' : 'fail'
-  const passed = tests.filter((t) => t.passed && !t.skipped).length
-  const counted = tests.filter((t) => !t.skipped).length
+  const passed = tests.filter((x) => x.passed && !x.skipped).length
+  const counted = tests.filter((x) => !x.skipped).length
 
   return (
     <section className="response">
@@ -150,11 +151,11 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
             <button key={v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>
               {
                 {
-                  pretty: 'Formaté',
-                  raw: 'Brut',
-                  preview: 'Aperçu',
-                  headers: `En-têtes (${result.headers.length})`,
-                  tests: counted > 0 || testError ? `Tests (${passed}/${counted})` : 'Tests'
+                  pretty: t('res.pretty'),
+                  raw: t('res.raw'),
+                  preview: t('res.preview'),
+                  headers: t('res.headers', { count: result.headers.length }),
+                  tests: counted > 0 || testError ? t('res.testsCount', { passed, total: counted }) : t('res.tests')
                 }[v]
               }
               {v === 'tests' && (testError || passed < counted) && <span className="dot fail-dot" />}
@@ -167,10 +168,10 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
           </span>
           <span>{result.timeMs} ms</span>
           <span>{formatSize(result.sizeBytes)}</span>
-          {format !== 'auto' && <span className="muted small">format : {format.toUpperCase()}</span>}
+          {format !== 'auto' && <span className="muted small">{t('res.format', { format: format.toUpperCase() })}</span>}
           {tab.source?.kind === 'collection' && kind !== 'image' && (
-            <button className="small-btn" onClick={() => saveAsExample(tab, result, text, kind === 'json' || kind === 'xml' || kind === 'html' ? kind : 'text')} title="Réponse servie par les mock servers de la collection">
-              Enregistrer comme exemple
+            <button className="small-btn" onClick={() => saveAsExample(tab, result, text, kind === 'json' || kind === 'xml' || kind === 'html' ? kind : 'text')} title={t('res.saveExampleTitle')}>
+              {t('res.saveExample')}
             </button>
           )}
         </div>
@@ -191,13 +192,13 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
         )}
         {view === 'preview' &&
           (kind === 'image' ? (
-            <img className="preview-img" src={`data:${result.contentType};base64,${result.bodyBase64}`} alt="Aperçu" />
+            <img className="preview-img" src={`data:${result.contentType};base64,${result.bodyBase64}`} alt={t('res.previewAlt')} />
           ) : (
-            <iframe className="preview" sandbox="" srcDoc={text} title="Aperçu" />
+            <iframe className="preview" sandbox="" srcDoc={text} title={t('res.previewAlt')} />
           ))}
         {(view === 'pretty' || view === 'raw') &&
           (kind === 'image' ? (
-            <p className="muted">Réponse binaire ({result.contentType}). Voir l'aperçu.</p>
+            <p className="muted">{t('res.binary', { type: result.contentType ?? '' })}</p>
           ) : (
             <CodeMirror
               value={view === 'pretty' ? pretty : text}

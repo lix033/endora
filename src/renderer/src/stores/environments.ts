@@ -6,6 +6,7 @@ import type { VariableMutation } from '@shared/scripting/types'
 import { mutateVariables, type Variable } from '@shared/variables'
 
 export { mutateVariables }
+import { t } from '@shared/i18n'
 import { toast } from './ui'
 
 interface EnvironmentsState {
@@ -38,7 +39,7 @@ function persistEnvironment(id: string): void {
       const env = useEnvironments.getState().environments.find((e) => e.id === id)
       const op = env ? window.endora.saveEnvironment(env) : window.endora.deleteEnvironment(id)
       void op.then((r) => {
-        if (!r.ok) toast(`Environnement non enregistré : ${r.message}`, 'error')
+        if (!r.ok) toast(t('store.envFailed', { message: r.message }), 'error')
       })
     }, 300)
   )
@@ -48,7 +49,7 @@ function persistGlobals(): void {
   if (globalsTimer) clearTimeout(globalsTimer)
   globalsTimer = setTimeout(() => {
     void window.endora.saveGlobals(useEnvironments.getState().globals).then((r) => {
-      if (!r.ok) toast(`Globales non enregistrées : ${r.message}`, 'error')
+      if (!r.ok) toast(t('store.globalsFailed', { message: r.message }), 'error')
     })
   }, 300)
 }
@@ -67,7 +68,7 @@ export const useEnvironments = create<EnvironmentsState>((set, get) => ({
 
   setActive: (activeId) => set({ activeId }),
 
-  create: (name = 'Nouvel environnement', values = []) => {
+  create: (name = t('env.newName'), values = []) => {
     const env: Environment = { id: newId(), name, values }
     set({ environments: [...get().environments, env] })
     persistEnvironment(env.id)
@@ -115,7 +116,7 @@ export const useEnvironments = create<EnvironmentsState>((set, get) => ({
       const env = get().environments.find((e) => e.id === active)
       if (env) get().setValues(active, mutateVariables(env.values, envMutations))
     } else if (envMutations.length > 0) {
-      toast('Un script a modifié l’environnement, mais aucun environnement n’est actif.', 'error')
+      toast(t('store.noActiveEnv'), 'error')
     }
     if (globalMutations.length > 0) get().setGlobals(mutateVariables(get().globals, globalMutations))
   }

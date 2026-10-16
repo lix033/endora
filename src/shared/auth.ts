@@ -1,6 +1,8 @@
 // Autorisation : types, champs (noms de paramètres observés dans le moteur de référence pour
 // rester compatible avec le format v2.1), conversion v2.1 et héritage dossier → collection.
 
+import { t, type MessageKey } from './i18n'
+
 export type AuthType =
   | 'noauth'
   | 'apikey'
@@ -25,209 +27,213 @@ export interface AuthConfig {
 
 export interface AuthField {
   key: string
-  label: string
+  label: MessageKey
   kind: 'text' | 'secret' | 'select' | 'checkbox' | 'textarea' | 'json'
-  options?: Array<{ value: string; label: string }>
+  /** Sans `label`, la valeur est affichée telle quelle (MD5, HS256…). */
+  options?: Array<{ value: string; label?: MessageKey }>
   default?: string | boolean
+  /** Texte d'exemple littéral (X-API-Key, us-east-1…). */
   placeholder?: string
+  placeholderKey?: MessageKey
   /** Affiché dans la section « Avancé ». */
   advanced?: boolean
   /** N'affiche le champ que si un autre paramètre a l'une des valeurs indiquées. */
   when?: { key: string; values: string[] }
-  hint?: string
+  hint?: MessageKey
 }
 
-const opts = (...values: string[]) => values.map((v) => ({ value: v, label: v }))
+const opts = (...values: string[]) => values.map((v) => ({ value: v }))
 const HMAC_ALGS = ['HS256', 'HS384', 'HS512']
 const ASYM_ALGS = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512', 'ES256', 'ES384', 'ES512']
 
-export const AUTH_TYPES: Array<{ type: AuthType; label: string; fields: AuthField[] }> = [
-  { type: 'noauth', label: 'Aucune', fields: [] },
+export const AUTH_TYPES: Array<{ type: AuthType; label: MessageKey; fields: AuthField[] }> = [
+  { type: 'noauth', label: 'auth.type.noauth', fields: [] },
   {
     type: 'apikey',
-    label: 'Clé d’API',
+    label: 'auth.type.apikey',
     fields: [
-      { key: 'key', label: 'Clé', kind: 'text', placeholder: 'X-API-Key' },
-      { key: 'value', label: 'Valeur', kind: 'secret' },
-      { key: 'in', label: 'Ajouter dans', kind: 'select', default: 'header', options: [{ value: 'header', label: 'En-tête' }, { value: 'query', label: 'Paramètres de requête' }] }
+      { key: 'key', label: 'auth.f.key', kind: 'text', placeholder: 'X-API-Key' },
+      { key: 'value', label: 'auth.f.value', kind: 'secret' },
+      { key: 'in', label: 'auth.f.addTo', kind: 'select', default: 'header', options: [{ value: 'header', label: 'auth.f.header' }, { value: 'query', label: 'auth.f.queryParams' }] }
     ]
   },
-  { type: 'bearer', label: 'Jeton Bearer', fields: [{ key: 'token', label: 'Jeton', kind: 'secret' }] },
+  { type: 'bearer', label: 'auth.type.bearer', fields: [{ key: 'token', label: 'auth.f.token', kind: 'secret' }] },
   {
     type: 'basic',
-    label: 'Basique',
+    label: 'auth.type.basic',
     fields: [
-      { key: 'username', label: 'Utilisateur', kind: 'text' },
-      { key: 'password', label: 'Mot de passe', kind: 'secret' }
+      { key: 'username', label: 'auth.f.username', kind: 'text' },
+      { key: 'password', label: 'auth.f.password', kind: 'secret' }
     ]
   },
   {
     type: 'digest',
-    label: 'Digest',
+    label: 'auth.type.digest',
     fields: [
-      { key: 'username', label: 'Utilisateur', kind: 'text' },
-      { key: 'password', label: 'Mot de passe', kind: 'secret' },
-      { key: 'disableRetryRequest', label: 'Ne pas renvoyer la requête après le défi 401', kind: 'checkbox', default: false, advanced: true },
-      { key: 'realm', label: 'Realm', kind: 'text', advanced: true, hint: 'Rempli automatiquement depuis le défi du serveur.' },
-      { key: 'nonce', label: 'Nonce', kind: 'text', advanced: true },
-      { key: 'algorithm', label: 'Algorithme', kind: 'select', default: 'MD5', advanced: true, options: opts('MD5', 'MD5-sess', 'SHA-256', 'SHA-256-sess', 'SHA-512-256', 'SHA-512-256-sess') },
-      { key: 'qop', label: 'qop', kind: 'text', advanced: true, placeholder: 'auth' },
-      { key: 'nonceCount', label: 'Compteur de nonce', kind: 'text', advanced: true, placeholder: '00000001' },
-      { key: 'clientNonce', label: 'Nonce client', kind: 'text', advanced: true },
-      { key: 'opaque', label: 'Opaque', kind: 'text', advanced: true }
+      { key: 'username', label: 'auth.f.username', kind: 'text' },
+      { key: 'password', label: 'auth.f.password', kind: 'secret' },
+      { key: 'disableRetryRequest', label: 'auth.f.disableRetry', kind: 'checkbox', default: false, advanced: true },
+      { key: 'realm', label: 'auth.f.realm', kind: 'text', advanced: true, hint: 'auth.f.realmHint' },
+      { key: 'nonce', label: 'auth.f.nonce', kind: 'text', advanced: true },
+      { key: 'algorithm', label: 'auth.f.algorithm', kind: 'select', default: 'MD5', advanced: true, options: opts('MD5', 'MD5-sess', 'SHA-256', 'SHA-256-sess', 'SHA-512-256', 'SHA-512-256-sess') },
+      { key: 'qop', label: 'auth.f.qop', kind: 'text', advanced: true, placeholder: 'auth' },
+      { key: 'nonceCount', label: 'auth.f.nonceCount', kind: 'text', advanced: true, placeholder: '00000001' },
+      { key: 'clientNonce', label: 'auth.f.clientNonce', kind: 'text', advanced: true },
+      { key: 'opaque', label: 'auth.f.opaque', kind: 'text', advanced: true }
     ]
   },
   {
     type: 'oauth1',
-    label: 'OAuth 1.0',
+    label: 'auth.type.oauth1',
     fields: [
-      { key: 'signatureMethod', label: 'Méthode de signature', kind: 'select', default: 'HMAC-SHA1', options: opts('HMAC-SHA1', 'HMAC-SHA256', 'HMAC-SHA512', 'RSA-SHA1', 'RSA-SHA256', 'RSA-SHA512', 'PLAINTEXT') },
-      { key: 'consumerKey', label: 'Clé consommateur', kind: 'text' },
-      { key: 'consumerSecret', label: 'Secret consommateur', kind: 'secret', when: { key: 'signatureMethod', values: ['HMAC-SHA1', 'HMAC-SHA256', 'HMAC-SHA512', 'PLAINTEXT'] } },
-      { key: 'privateKey', label: 'Clé privée (PEM)', kind: 'textarea', when: { key: 'signatureMethod', values: ['RSA-SHA1', 'RSA-SHA256', 'RSA-SHA512'] } },
-      { key: 'token', label: 'Jeton d’accès', kind: 'text' },
-      { key: 'tokenSecret', label: 'Secret du jeton', kind: 'secret' },
-      { key: 'addParamsToHeader', label: 'Ajouter les paramètres dans l’en-tête Authorization', kind: 'checkbox', default: true },
-      { key: 'callback', label: 'URL de callback', kind: 'text', advanced: true },
-      { key: 'verifier', label: 'Vérificateur', kind: 'text', advanced: true },
-      { key: 'timestamp', label: 'Horodatage', kind: 'text', advanced: true },
-      { key: 'nonce', label: 'Nonce', kind: 'text', advanced: true },
-      { key: 'version', label: 'Version', kind: 'text', default: '1.0', advanced: true },
-      { key: 'realm', label: 'Realm', kind: 'text', advanced: true },
-      { key: 'includeBodyHash', label: 'Inclure le hash du body', kind: 'checkbox', default: false, advanced: true },
-      { key: 'addEmptyParamsToSign', label: 'Signer aussi les paramètres vides', kind: 'checkbox', default: false, advanced: true },
-      { key: 'disableHeaderEncoding', label: 'Ne pas encoder les paramètres de l’en-tête', kind: 'checkbox', default: false, advanced: true }
+      { key: 'signatureMethod', label: 'auth.f.signatureMethod', kind: 'select', default: 'HMAC-SHA1', options: opts('HMAC-SHA1', 'HMAC-SHA256', 'HMAC-SHA512', 'RSA-SHA1', 'RSA-SHA256', 'RSA-SHA512', 'PLAINTEXT') },
+      { key: 'consumerKey', label: 'auth.f.consumerKey', kind: 'text' },
+      { key: 'consumerSecret', label: 'auth.f.consumerSecret', kind: 'secret', when: { key: 'signatureMethod', values: ['HMAC-SHA1', 'HMAC-SHA256', 'HMAC-SHA512', 'PLAINTEXT'] } },
+      { key: 'privateKey', label: 'auth.f.privateKeyPem', kind: 'textarea', when: { key: 'signatureMethod', values: ['RSA-SHA1', 'RSA-SHA256', 'RSA-SHA512'] } },
+      { key: 'token', label: 'auth.f.accessToken', kind: 'text' },
+      { key: 'tokenSecret', label: 'auth.f.tokenSecret', kind: 'secret' },
+      { key: 'addParamsToHeader', label: 'auth.f.addParamsToHeader', kind: 'checkbox', default: true },
+      { key: 'callback', label: 'auth.f.callbackUrl', kind: 'text', advanced: true },
+      { key: 'verifier', label: 'auth.f.verifier', kind: 'text', advanced: true },
+      { key: 'timestamp', label: 'auth.f.timestamp', kind: 'text', advanced: true },
+      { key: 'nonce', label: 'auth.f.nonce', kind: 'text', advanced: true },
+      { key: 'version', label: 'auth.f.version', kind: 'text', default: '1.0', advanced: true },
+      { key: 'realm', label: 'auth.f.realm', kind: 'text', advanced: true },
+      { key: 'includeBodyHash', label: 'auth.f.includeBodyHash', kind: 'checkbox', default: false, advanced: true },
+      { key: 'addEmptyParamsToSign', label: 'auth.f.addEmptyParams', kind: 'checkbox', default: false, advanced: true },
+      { key: 'disableHeaderEncoding', label: 'auth.f.disableHeaderEncoding', kind: 'checkbox', default: false, advanced: true }
     ]
   },
   {
     type: 'oauth2',
-    label: 'OAuth 2.0',
+    label: 'auth.type.oauth2',
     fields: [
-      { key: 'accessToken', label: 'Jeton d’accès', kind: 'secret' },
-      { key: 'addTokenTo', label: 'Ajouter le jeton dans', kind: 'select', default: 'header', options: [{ value: 'header', label: 'En-tête' }, { value: 'queryParams', label: 'Paramètres de requête' }] },
-      { key: 'headerPrefix', label: 'Préfixe de l’en-tête', kind: 'text', default: 'Bearer' },
-      { key: 'tokenName', label: 'Nom du jeton', kind: 'text', advanced: true },
+      { key: 'accessToken', label: 'auth.f.accessToken', kind: 'secret' },
+      { key: 'addTokenTo', label: 'auth.f.addTokenTo', kind: 'select', default: 'header', options: [{ value: 'header', label: 'auth.f.header' }, { value: 'queryParams', label: 'auth.f.queryParams' }] },
+      { key: 'headerPrefix', label: 'auth.f.headerPrefix', kind: 'text', default: 'Bearer' },
+      { key: 'tokenName', label: 'auth.f.tokenName', kind: 'text', advanced: true },
       {
         key: 'grant_type',
-        label: 'Type d’octroi',
+        label: 'auth.f.grantType',
         kind: 'select',
         default: 'authorization_code',
         advanced: true,
         options: [
-          { value: 'authorization_code', label: 'Code d’autorisation' },
-          { value: 'authorization_code_with_pkce', label: 'Code d’autorisation (PKCE)' },
-          { value: 'implicit', label: 'Implicite' },
-          { value: 'password_credentials', label: 'Identifiants (mot de passe)' },
-          { value: 'client_credentials', label: 'Identifiants client' }
+          { value: 'authorization_code', label: 'auth.grant.authorization_code' },
+          { value: 'authorization_code_with_pkce', label: 'auth.grant.authorization_code_with_pkce' },
+          { value: 'implicit', label: 'auth.grant.implicit' },
+          { value: 'password_credentials', label: 'auth.grant.password_credentials' },
+          { value: 'client_credentials', label: 'auth.grant.client_credentials' }
         ]
       },
-      { key: 'redirect_uri', label: 'URL de redirection', kind: 'text', advanced: true, placeholder: 'https://localhost/callback', when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'implicit'] } },
-      { key: 'authUrl', label: 'URL d’autorisation', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'implicit'] } },
-      { key: 'accessTokenUrl', label: 'URL du jeton', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'password_credentials', 'client_credentials'] } },
-      { key: 'clientId', label: 'ID client', kind: 'text', advanced: true },
-      { key: 'clientSecret', label: 'Secret client', kind: 'secret', advanced: true },
-      { key: 'username', label: 'Utilisateur', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['password_credentials'] } },
-      { key: 'password', label: 'Mot de passe', kind: 'secret', advanced: true, when: { key: 'grant_type', values: ['password_credentials'] } },
-      { key: 'challengeAlgorithm', label: 'Méthode du code challenge', kind: 'select', default: 'S256', advanced: true, options: opts('S256', 'plain'), when: { key: 'grant_type', values: ['authorization_code_with_pkce'] } },
-      { key: 'code_verifier', label: 'Code verifier', kind: 'text', advanced: true, placeholder: 'généré automatiquement', when: { key: 'grant_type', values: ['authorization_code_with_pkce'] } },
-      { key: 'scope', label: 'Portée (scope)', kind: 'text', advanced: true },
-      { key: 'state', label: 'État (state)', kind: 'text', advanced: true },
+      { key: 'redirect_uri', label: 'auth.f.callbackUrlOauth2', kind: 'text', advanced: true, placeholder: 'https://localhost/callback', when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'implicit'] } },
+      { key: 'authUrl', label: 'auth.f.authUrl', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'implicit'] } },
+      { key: 'accessTokenUrl', label: 'auth.f.accessTokenUrl', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['authorization_code', 'authorization_code_with_pkce', 'password_credentials', 'client_credentials'] } },
+      { key: 'clientId', label: 'auth.f.clientId', kind: 'text', advanced: true },
+      { key: 'clientSecret', label: 'auth.f.clientSecret', kind: 'secret', advanced: true },
+      { key: 'username', label: 'auth.f.username', kind: 'text', advanced: true, when: { key: 'grant_type', values: ['password_credentials'] } },
+      { key: 'password', label: 'auth.f.password', kind: 'secret', advanced: true, when: { key: 'grant_type', values: ['password_credentials'] } },
+      { key: 'challengeAlgorithm', label: 'auth.f.challengeAlgorithm', kind: 'select', default: 'S256', advanced: true, options: opts('S256', 'plain'), when: { key: 'grant_type', values: ['authorization_code_with_pkce'] } },
+      { key: 'code_verifier', label: 'auth.f.codeVerifier', kind: 'text', advanced: true, placeholderKey: 'auth.f.codeVerifierPlaceholder', when: { key: 'grant_type', values: ['authorization_code_with_pkce'] } },
+      { key: 'scope', label: 'auth.f.scope', kind: 'text', advanced: true },
+      { key: 'state', label: 'auth.f.state', kind: 'text', advanced: true },
       {
         key: 'client_authentication',
-        label: 'Authentification du client',
+        label: 'auth.f.clientAuthentication',
         kind: 'select',
         default: 'header',
         advanced: true,
-        options: [{ value: 'header', label: 'En-tête Basic' }, { value: 'body', label: 'Dans le body' }]
+        options: [{ value: 'header', label: 'auth.f.clientAuthHeader' }, { value: 'body', label: 'auth.f.clientAuthBody' }]
       }
     ]
   },
   {
     type: 'hawk',
-    label: 'Hawk',
+    label: 'auth.type.hawk',
     fields: [
-      { key: 'authId', label: 'ID Hawk', kind: 'text' },
-      { key: 'authKey', label: 'Clé Hawk', kind: 'secret' },
-      { key: 'algorithm', label: 'Algorithme', kind: 'select', default: 'sha256', options: opts('sha256', 'sha1') },
-      { key: 'user', label: 'Utilisateur', kind: 'text', advanced: true },
-      { key: 'nonce', label: 'Nonce', kind: 'text', advanced: true },
-      { key: 'extraData', label: 'ext', kind: 'text', advanced: true },
-      { key: 'app', label: 'ID d’application', kind: 'text', advanced: true },
-      { key: 'delegation', label: 'Délégation', kind: 'text', advanced: true },
-      { key: 'timestamp', label: 'Horodatage', kind: 'text', advanced: true },
-      { key: 'includePayloadHash', label: 'Inclure le hash du body', kind: 'checkbox', default: false, advanced: true }
+      { key: 'authId', label: 'auth.f.hawkId', kind: 'text' },
+      { key: 'authKey', label: 'auth.f.hawkKey', kind: 'secret' },
+      { key: 'algorithm', label: 'auth.f.algorithm', kind: 'select', default: 'sha256', options: opts('sha256', 'sha1') },
+      { key: 'user', label: 'auth.f.username', kind: 'text', advanced: true },
+      { key: 'nonce', label: 'auth.f.nonce', kind: 'text', advanced: true },
+      { key: 'extraData', label: 'auth.f.ext', kind: 'text', advanced: true },
+      { key: 'app', label: 'auth.f.app', kind: 'text', advanced: true },
+      { key: 'delegation', label: 'auth.f.delegation', kind: 'text', advanced: true },
+      { key: 'timestamp', label: 'auth.f.timestamp', kind: 'text', advanced: true },
+      { key: 'includePayloadHash', label: 'auth.f.includeBodyHash', kind: 'checkbox', default: false, advanced: true }
     ]
   },
   {
     type: 'awsv4',
-    label: 'Signature AWS',
+    label: 'auth.type.awsv4',
     fields: [
-      { key: 'accessKey', label: 'Clé d’accès', kind: 'text' },
-      { key: 'secretKey', label: 'Clé secrète', kind: 'secret' },
-      { key: 'addAuthDataToQuery', label: 'Ajouter la signature dans l’URL', kind: 'checkbox', default: false },
-      { key: 'region', label: 'Région', kind: 'text', advanced: true, placeholder: 'us-east-1' },
-      { key: 'service', label: 'Service', kind: 'text', advanced: true, placeholder: 'execute-api' },
-      { key: 'sessionToken', label: 'Jeton de session', kind: 'secret', advanced: true }
+      { key: 'accessKey', label: 'auth.f.accessKey', kind: 'text' },
+      { key: 'secretKey', label: 'auth.f.secretKey', kind: 'secret' },
+      { key: 'addAuthDataToQuery', label: 'auth.f.addAuthToQuery', kind: 'checkbox', default: false },
+      { key: 'region', label: 'auth.f.region', kind: 'text', advanced: true, placeholder: 'us-east-1' },
+      { key: 'service', label: 'auth.f.service', kind: 'text', advanced: true, placeholder: 'execute-api' },
+      { key: 'sessionToken', label: 'auth.f.sessionToken', kind: 'secret', advanced: true }
     ]
   },
   {
     type: 'ntlm',
-    label: 'NTLM',
+    label: 'auth.type.ntlm',
     fields: [
-      { key: 'username', label: 'Utilisateur', kind: 'text' },
-      { key: 'password', label: 'Mot de passe', kind: 'secret' },
-      { key: 'domain', label: 'Domaine', kind: 'text', advanced: true },
-      { key: 'workstation', label: 'Poste de travail', kind: 'text', advanced: true },
-      { key: 'disableRetryRequest', label: 'Ne pas renvoyer la requête après le défi 401', kind: 'checkbox', default: false, advanced: true }
+      { key: 'username', label: 'auth.f.username', kind: 'text' },
+      { key: 'password', label: 'auth.f.password', kind: 'secret' },
+      { key: 'domain', label: 'auth.f.domain', kind: 'text', advanced: true },
+      { key: 'workstation', label: 'auth.f.workstation', kind: 'text', advanced: true },
+      { key: 'disableRetryRequest', label: 'auth.f.disableRetry', kind: 'checkbox', default: false, advanced: true }
     ]
   },
   {
     type: 'edgegrid',
-    label: 'Akamai EdgeGrid',
+    label: 'auth.type.edgegrid',
     fields: [
-      { key: 'accessToken', label: 'Jeton d’accès', kind: 'text' },
-      { key: 'clientToken', label: 'Jeton client', kind: 'text' },
-      { key: 'clientSecret', label: 'Secret client', kind: 'secret' },
-      { key: 'nonce', label: 'Nonce', kind: 'text', advanced: true },
-      { key: 'timestamp', label: 'Horodatage', kind: 'text', advanced: true },
-      { key: 'baseURL', label: 'URL de base', kind: 'text', advanced: true },
-      { key: 'headersToSign', label: 'En-têtes à signer (séparés par des virgules)', kind: 'text', advanced: true }
+      { key: 'accessToken', label: 'auth.f.accessToken', kind: 'text' },
+      { key: 'clientToken', label: 'auth.f.clientToken', kind: 'text' },
+      { key: 'clientSecret', label: 'auth.f.clientSecret', kind: 'secret' },
+      { key: 'nonce', label: 'auth.f.nonce', kind: 'text', advanced: true },
+      { key: 'timestamp', label: 'auth.f.timestamp', kind: 'text', advanced: true },
+      { key: 'baseURL', label: 'auth.f.baseUrl', kind: 'text', advanced: true },
+      { key: 'headersToSign', label: 'auth.f.headersToSign', kind: 'text', advanced: true }
     ]
   },
   {
     type: 'jwt',
-    label: 'Jeton JWT',
+    label: 'auth.type.jwt',
     fields: [
-      { key: 'algorithm', label: 'Algorithme', kind: 'select', default: 'HS256', options: opts(...HMAC_ALGS, ...ASYM_ALGS) },
-      { key: 'secret', label: 'Secret', kind: 'secret', when: { key: 'algorithm', values: HMAC_ALGS } },
-      { key: 'isSecretBase64Encoded', label: 'Secret encodé en Base64', kind: 'checkbox', default: false, when: { key: 'algorithm', values: HMAC_ALGS } },
-      { key: 'privateKey', label: 'Clé privée (PKCS#8 PEM)', kind: 'textarea', when: { key: 'algorithm', values: ASYM_ALGS } },
-      { key: 'payload', label: 'Charge utile (JSON)', kind: 'json', default: '{}' },
-      { key: 'addTokenTo', label: 'Ajouter le jeton dans', kind: 'select', default: 'header', options: [{ value: 'header', label: 'En-tête' }, { value: 'queryParam', label: 'Paramètres de requête' }] },
-      { key: 'headerPrefix', label: 'Préfixe de l’en-tête', kind: 'text', default: 'Bearer', advanced: true },
-      { key: 'queryParamKey', label: 'Nom du paramètre', kind: 'text', default: 'token', advanced: true },
-      { key: 'header', label: 'En-têtes JWT (JSON)', kind: 'json', default: '{}', advanced: true }
+      { key: 'algorithm', label: 'auth.f.algorithm', kind: 'select', default: 'HS256', options: opts(...HMAC_ALGS, ...ASYM_ALGS) },
+      { key: 'secret', label: 'auth.f.secret', kind: 'secret', when: { key: 'algorithm', values: HMAC_ALGS } },
+      { key: 'isSecretBase64Encoded', label: 'auth.f.secretBase64', kind: 'checkbox', default: false, when: { key: 'algorithm', values: HMAC_ALGS } },
+      { key: 'privateKey', label: 'auth.f.privateKeyPkcs8', kind: 'textarea', when: { key: 'algorithm', values: ASYM_ALGS } },
+      { key: 'payload', label: 'auth.f.payload', kind: 'json', default: '{}' },
+      { key: 'addTokenTo', label: 'auth.f.addTokenTo', kind: 'select', default: 'header', options: [{ value: 'header', label: 'auth.f.header' }, { value: 'queryParam', label: 'auth.f.queryParams' }] },
+      { key: 'headerPrefix', label: 'auth.f.headerPrefix', kind: 'text', default: 'Bearer', advanced: true },
+      { key: 'queryParamKey', label: 'auth.f.queryParamName', kind: 'text', default: 'token', advanced: true },
+      { key: 'header', label: 'auth.f.jwtHeaders', kind: 'json', default: '{}', advanced: true }
     ]
   },
   {
     type: 'asap',
-    label: 'ASAP (Atlassian)',
+    label: 'auth.type.asap',
     fields: [
-      { key: 'alg', label: 'Algorithme', kind: 'select', default: 'RS256', options: opts(...ASYM_ALGS) },
-      { key: 'iss', label: 'Émetteur (iss)', kind: 'text' },
-      { key: 'aud', label: 'Audience (aud)', kind: 'text' },
-      { key: 'kid', label: 'ID de clé (kid)', kind: 'text' },
-      { key: 'privateKey', label: 'Clé privée', kind: 'textarea' },
-      { key: 'sub', label: 'Sujet (sub)', kind: 'text', advanced: true },
-      { key: 'exp', label: 'Expiration (secondes)', kind: 'text', default: '3600', advanced: true },
-      { key: 'claims', label: 'Revendications supplémentaires (JSON)', kind: 'json', default: '{}', advanced: true }
+      { key: 'alg', label: 'auth.f.algorithm', kind: 'select', default: 'RS256', options: opts(...ASYM_ALGS) },
+      { key: 'iss', label: 'auth.f.issuer', kind: 'text' },
+      { key: 'aud', label: 'auth.f.audience', kind: 'text' },
+      { key: 'kid', label: 'auth.f.keyId', kind: 'text' },
+      { key: 'privateKey', label: 'auth.f.privateKey', kind: 'textarea' },
+      { key: 'sub', label: 'auth.f.subject', kind: 'text', advanced: true },
+      { key: 'exp', label: 'auth.f.expiry', kind: 'text', default: '3600', advanced: true },
+      { key: 'claims', label: 'auth.f.claims', kind: 'json', default: '{}', advanced: true }
     ]
   }
 ]
 
-export const AUTH_LABELS: Record<AuthType, string> = Object.fromEntries(AUTH_TYPES.map((t) => [t.type, t.label])) as Record<AuthType, string>
+/** Nom affiché d'un type d'autorisation (terme familier, identique dans toutes les langues). */
+export const authLabel = (type: AuthType): string => t(`auth.type.${type}`)
 
-export const isAuthType = (t: unknown): t is AuthType => typeof t === 'string' && t in AUTH_LABELS
+export const isAuthType = (v: unknown): v is AuthType => typeof v === 'string' && AUTH_TYPES.some((x) => x.type === v)
 
 /** Valeur d'un paramètre avec la valeur par défaut du catalogue. */
 export function authParam(auth: AuthConfig, key: string): AuthParamValue {

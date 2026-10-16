@@ -11,6 +11,7 @@ import { resolveDeep } from '@shared/variables'
 import { signRequest } from './auth'
 import { draftToScriptRequest, scopesFrom, toScriptVars, toSpec } from './executor'
 import { prepareRequest } from './http'
+import { t } from '@shared/i18n'
 
 const EXCLUDED = new Set(['postman-cli'])
 
@@ -55,7 +56,7 @@ function bodyDefinition(spec: HttpRequestSpec): Record<string, unknown> | undefi
 }
 
 export async function generateCode(input: ExecutionInput, language: unknown, variant: unknown, options: unknown, resolveVariables: unknown): Promise<CodegenResult> {
-  if (typeof language !== 'string' || typeof variant !== 'string' || EXCLUDED.has(language)) return { ok: false, message: 'Langage inconnu.' }
+  if (typeof language !== 'string' || typeof variant !== 'string' || EXCLUDED.has(language)) return { ok: false, message: t('codegen.unknown') }
   try {
     const { codegen, sdk } = await load()
     const vars = {
@@ -97,7 +98,7 @@ export async function generateCode(input: ExecutionInput, language: unknown, var
     const safeOptions = options && typeof options === 'object' ? (options as Record<string, unknown>) : {}
     return await new Promise<CodegenResult>((resolve) => {
       codegen.convert(language, variant, request, safeOptions, (err, snippet) =>
-        resolve(err || typeof snippet !== 'string' ? { ok: false, message: err?.message ?? 'Génération impossible.' } : { ok: true, snippet })
+        resolve(err || typeof snippet !== 'string' ? { ok: false, message: err?.message ?? t('codegen.failed') } : { ok: true, snippet })
       )
     })
   } catch (err) {

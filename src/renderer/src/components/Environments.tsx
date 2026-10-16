@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { lookupVariable, SCOPE_LABELS, visibleVariables } from '@shared/variables'
+import { t } from '@shared/i18n'
+import { lookupVariable, scopeLabel, visibleVariables } from '@shared/variables'
 import { tabCollection } from '../stores/context'
 import { useEnvironments } from '../stores/environments'
 import { useTabs } from '../stores/tabs'
@@ -19,18 +20,18 @@ export function EnvironmentsList({ filter }: { filter: string }) {
     const env = environments.find((x) => x.id === id)!
     const store = useEnvironments.getState()
     openMenu(e, [
-      { label: activeId === id ? 'Désactiver' : 'Définir comme actif', onSelect: () => store.setActive(activeId === id ? null : id) },
-      { label: 'Ouvrir', onSelect: () => open(id, false) },
-      { label: 'Dupliquer', onSelect: () => store.duplicate(id) },
-      { label: 'Exporter…', onSelect: () => void exportEnvironment(env.name, env.values, 'environment', env.id) },
+      { label: activeId === id ? t('env.deactivate') : t('env.setActive'), onSelect: () => store.setActive(activeId === id ? null : id) },
+      { label: t('common.open'), onSelect: () => open(id, false) },
+      { label: t('common.duplicate'), onSelect: () => store.duplicate(id) },
+      { label: t('common.export'), onSelect: () => void exportEnvironment(env.name, env.values, 'environment', env.id) },
       'separator',
       {
-        label: 'Supprimer',
+        label: t('common.delete'),
         danger: true,
         onSelect: () =>
-          void confirmDialog('Supprimer l’environnement', `« ${env.name} » et ses variables seront supprimés définitivement.`, [
-            { label: 'Annuler', value: 'cancel' },
-            { label: 'Supprimer', value: 'delete', variant: 'danger' }
+          void confirmDialog(t('env.deleteTitle'), t('env.deleteMessage', { name: env.name }), [
+            { label: t('common.cancel'), value: 'cancel' },
+            { label: t('common.delete'), value: 'delete', variant: 'danger' }
           ]).then((c) => c === 'delete' && store.remove(id))
       }
     ])
@@ -44,14 +45,14 @@ export function EnvironmentsList({ filter }: { filter: string }) {
         onDoubleClick={() => useTabs.getState().openView({ kind: 'globals' })}
       >
         <span className="env-icon globe" aria-hidden />
-        <span className="tree-name">Globales</span>
+        <span className="tree-name">{t('env.globals')}</span>
         <span className="muted small">{globals.filter((g) => g.key).length}</span>
       </div>
-      <div className="history-day">Environnements</div>
+      <div className="history-day">{t('env.environments')}</div>
       {environments.length === 0 && (
         <div className="sidebar-empty">
-          <p className="muted small">Un environnement regroupe des variables (URL de base, jetons…) que vous activez selon le contexte : dev, recette, prod.</p>
-          <button onClick={() => open(useEnvironments.getState().create().id, false)}>Créer un environnement</button>
+          <p className="muted small">{t('env.emptyHint')}</p>
+          <button onClick={() => open(useEnvironments.getState().create(t('env.newName')).id, false)}>{t('env.create')}</button>
         </div>
       )}
       {environments
@@ -66,15 +67,15 @@ export function EnvironmentsList({ filter }: { filter: string }) {
           >
             <button
               className={`env-radio ${activeId === env.id ? 'on' : ''}`}
-              title={activeId === env.id ? 'Environnement actif' : 'Activer'}
+              title={activeId === env.id ? t('env.active') : t('env.activate')}
               onClick={(e) => {
                 e.stopPropagation()
                 useEnvironments.getState().setActive(activeId === env.id ? null : env.id)
               }}
-              aria-label="Activer l’environnement"
+              aria-label={t('env.activateLabel')}
             />
             <span className="tree-name">{env.name}</span>
-            <button className="ghost row-menu" aria-label="Actions" onClick={(e) => menu(e, env.id)}>
+            <button className="ghost row-menu" aria-label={t('common.actions')} onClick={(e) => menu(e, env.id)}>
               ⋯
             </button>
           </div>
@@ -108,27 +109,27 @@ export function EnvironmentSelector() {
       <select
         value={activeId ?? ''}
         onChange={(e) => useEnvironments.getState().setActive(e.target.value || null)}
-        aria-label="Environnement actif"
-        title="Environnement actif"
+        aria-label={t('env.active')}
+        title={t('env.active')}
       >
-        <option value="">Aucun environnement</option>
+        <option value="">{t('env.none')}</option>
         {environments.map((e) => (
           <option key={e.id} value={e.id}>
             {e.name}
           </option>
         ))}
       </select>
-      <button className={`ghost peek-btn ${peek ? 'on' : ''}`} onClick={() => setPeek(!peek)} title="Aperçu des variables">
+      <button className={`ghost peek-btn ${peek ? 'on' : ''}`} onClick={() => setPeek(!peek)} title={t('env.peek')}>
         {'{ }'}
       </button>
       {peek && (
         <div className="peek">
           <div className="peek-head">
-            <strong>Variables visibles</strong>
-            <span className="muted small">{collection ? `collection « ${collection.name} »` : 'hors collection'}</span>
+            <strong>{t('env.visible')}</strong>
+            <span className="muted small">{collection ? t('env.inCollection', { name: collection.name }) : t('env.outsideCollection')}</span>
           </div>
           {vars.length === 0 ? (
-            <p className="muted small">Aucune variable. Créez-en dans un environnement, la collection ou les globales.</p>
+            <p className="muted small">{t('env.noVariables')}</p>
           ) : (
             <table className="peek-table">
               <tbody>
@@ -139,7 +140,7 @@ export function EnvironmentSelector() {
                       <th className="mono">{v.key}</th>
                       <td className="mono">{r.type === 'secret' ? '●●●●●●' : r.value}</td>
                       <td className="muted small">
-                        {SCOPE_LABELS[r.scope]}
+                        {scopeLabel(r.scope)}
                         {r.label ? ` · ${r.label}` : ''}
                       </td>
                     </tr>
@@ -151,11 +152,11 @@ export function EnvironmentSelector() {
           <div className="row">
             {activeId && (
               <button className="link" onClick={() => useTabs.getState().openView({ kind: 'environment', environmentId: activeId })}>
-                Modifier l’environnement
+                {t('env.edit')}
               </button>
             )}
             <button className="link" onClick={() => useTabs.getState().openView({ kind: 'globals' })}>
-              Modifier les globales
+              {t('env.editGlobals')}
             </button>
           </div>
         </div>

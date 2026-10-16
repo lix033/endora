@@ -161,13 +161,13 @@ describe('executeRequest : scripts', () => {
       { name: 'statut', passed: true },
       { name: 'header pre', passed: true }
     ])
-    expect(out.logs).toEqual([{ level: 'log', message: 'test dossier', source: 'Dossier « F »' }])
+    expect(out.logs).toEqual([{ level: 'log', message: 'test dossier', source: 'Folder “F”' }])
   })
 
   it('n’envoie pas la requête si un script pre-request échoue ou appelle skipRequest', async () => {
     const failed = await executeRequest(input({ url: `${base}/x`, scripts: { prerequest: 'throw new Error("stop")', test: '' } }), runner)
     expect(failed.result).toBeNull()
-    expect(failed.prerequestError).toEqual({ message: 'Error: stop', source: 'Requête' })
+    expect(failed.prerequestError).toEqual({ message: 'Error: stop', source: 'Request' })
 
     const skipped = await executeRequest(input({ url: `${base}/x`, scripts: { prerequest: 'pm.execution.skipRequest()', test: '' } }), runner)
     expect(skipped.result).toBeNull()

@@ -23,4 +23,4 @@ process principal ou un worker isolé, jamais dans le renderer.
 | 10 | gRPC, MQTT, MCP | |
 | 11 | Mock server local ✔︎ (exemples, sessions, script, accès privé/public, déploiement auto), visualiseur, documentation/export PDF | en cours |
 | 12 | Tests de performance, fichiers locaux + Git, recherche plein texte | |
-| 13 | Thèmes ✔︎ et raccourcis ✔︎ (livrés avec les phases 3-5, comme l'onglet Paramètres et la vérification des mises à jour), interceptor/proxy de capture, Kafka, packaging et mises à jour | |
+| 13 | Thèmes ✔︎ et raccourcis ✔︎ (livrés avec les phases 3-5, comme l'onglet Paramètres et la vérification des mises à jour), interceptor/proxy de capture, Kafka, packaging ✔︎ et mises à jour automatiques ✔︎ ; interface multilingue (anglais par défaut, français) ✔︎ | en cours |

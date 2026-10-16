@@ -17,6 +17,7 @@ import {
 import { useConsole, type NewConsoleEntry } from './console'
 import { useEnvironments } from './environments'
 import { useSettings } from './settings'
+import { t } from '@shared/i18n'
 import { toast } from './ui'
 import { useWorkspace } from './workspace'
 
@@ -97,7 +98,7 @@ export const useRunner = create<RunnerState>((set, get) => {
       if (!collection) return
       const config = get().config(collectionId, folderId)
       if (!config.plan.some((p) => p.enabled)) {
-        toast('Sélectionnez au moins une requête à exécuter.', 'error')
+        toast(t('run.selectOne'), 'error')
         return
       }
       const envs = useEnvironments.getState()
@@ -200,6 +201,6 @@ export async function exportRun(run: RunRecord): Promise<void> {
   }
   const safe = run.title.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'run'
   const r = await window.endora.saveTextFile(`${safe}.run-results.json`, JSON.stringify(data, null, 2))
-  if (r.ok) toast(`Résultats exportés : ${r.path}`)
-  else if (!r.canceled) toast(`Export impossible : ${r.message}`, 'error')
+  if (r.ok) toast(t('run.exported', { path: r.path }))
+  else if (!r.canceled) toast(t('run.exportFailed', { message: r.message }), 'error')
 }

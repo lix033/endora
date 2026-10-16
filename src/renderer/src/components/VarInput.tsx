@@ -4,7 +4,8 @@ import { useSettings } from '../stores/settings'
 import { useWorkspace } from '../stores/workspace'
 import { scopesFor } from '../stores/context'
 import type { Collection } from '@shared/model'
-import { DYNAMIC_VARIABLES, findVariableTokens, lookupVariable, SCOPE_LABELS, visibleVariables, type ResolvedVariable, type Scope } from '@shared/variables'
+import { t } from '@shared/i18n'
+import { DYNAMIC_VARIABLES, findVariableTokens, lookupVariable, scopeLabel, visibleVariables, type ResolvedVariable, type Scope } from '@shared/variables'
 
 /** Portées visibles depuis une collection, recalculées quand variables ou environnement changent. */
 export function useScopes(collectionId: string | null | undefined): Scope[] {
@@ -67,8 +68,8 @@ export function VarInput({ value, onChange, scopes, placeholder, className = '',
     if (!m) return setSuggest(null)
     const prefix = m[1]!.toLowerCase()
     const items: Suggestion[] = [
-      ...visibleVariables(scopes).map((v) => ({ name: v.key, detail: SCOPE_LABELS[v.scope] })),
-      ...Object.entries(DYNAMIC_VARIABLES).map(([name, d]) => ({ name, detail: d.description }))
+      ...visibleVariables(scopes).map((v) => ({ name: v.key, detail: scopeLabel(v.scope) })),
+      ...Object.entries(DYNAMIC_VARIABLES).map(([name, d]) => ({ name, detail: t(d.description) }))
     ]
       .filter((s) => s.name.toLowerCase().includes(prefix))
       .slice(0, 50)
@@ -92,29 +93,29 @@ export function VarInput({ value, onChange, scopes, placeholder, className = '',
 
   const parts: ReactNode[] = []
   let last = 0
-  for (const t of tokens) {
-    if (t.start > last) parts.push(<span key={`t${last}`}>{type === 'password' ? mask(value.slice(last, t.start)) : value.slice(last, t.start)}</span>)
-    const resolved = lookupVariable(scopes, t.name)
-    const known = resolved !== null || t.name in DYNAMIC_VARIABLES
+  for (const tok of tokens) {
+    if (tok.start > last) parts.push(<span key={`t${last}`}>{type === 'password' ? mask(value.slice(last, tok.start)) : value.slice(last, tok.start)}</span>)
+    const resolved = lookupVariable(scopes, tok.name)
+    const known = resolved !== null || tok.name in DYNAMIC_VARIABLES
     parts.push(
       <span
-        key={`v${t.start}`}
+        key={`v${tok.start}`}
         className={`var-token ${known ? 'resolved' : 'unresolved'}`}
         onMouseEnter={(e) => {
           const r = (e.target as HTMLElement).getBoundingClientRect()
-          setHover({ x: r.left, y: r.bottom + 4, name: t.name, resolved })
+          setHover({ x: r.left, y: r.bottom + 4, name: tok.name, resolved })
         }}
         onMouseLeave={() => setHover(null)}
         onMouseDown={(e) => {
           e.preventDefault()
           ref.current?.focus()
-          ref.current?.setSelectionRange(t.end, t.end)
+          ref.current?.setSelectionRange(tok.end, tok.end)
         }}
       >
-        {value.slice(t.start, t.end)}
+        {value.slice(tok.start, tok.end)}
       </span>
     )
-    last = t.end
+    last = tok.end
   }
   if (last < value.length) parts.push(<span key={`t${last}`}>{type === 'password' ? mask(value.slice(last)) : value.slice(last)}</span>)
 
@@ -193,25 +194,25 @@ function VarTooltip({ x, y, name, resolved }: { x: number; y: number; name: stri
       {resolved ? (
         <>
           <div className="row-kv">
-            <span>Initiale</span>
+            <span>{t('var.initial')}</span>
             <span className="mono">{show(resolved.initial)}</span>
           </div>
           <div className="row-kv">
-            <span>Courante</span>
+            <span>{t('var.current')}</span>
             <span className="mono">{show(resolved.value)}</span>
           </div>
           <div className="row-kv">
-            <span>Portée</span>
+            <span>{t('var.scope')}</span>
             <span>
-              {SCOPE_LABELS[resolved.scope]}
+              {scopeLabel(resolved.scope)}
               {resolved.label ? ` · ${resolved.label}` : ''}
             </span>
           </div>
         </>
       ) : dynamic ? (
-        <div className="muted">Variable dynamique : {dynamic.description}, générée à chaque envoi.</div>
+        <div className="muted">{t('var.dynamic', { description: t(dynamic.description) })}</div>
       ) : (
-        <div className="unresolved-text">Variable non résolue. Définissez-la dans l’environnement actif, la collection ou les globales.</div>
+        <div className="unresolved-text">{t('var.unresolved')}</div>
       )}
     </div>
   )

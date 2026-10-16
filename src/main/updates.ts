@@ -6,6 +6,7 @@
 
 import type { UpdateCheckResult } from '@shared/api'
 import { executeHttp } from './http'
+import { t } from '@shared/i18n'
 
 /** Compare deux versions semver (préfixe « v » toléré) ; une pré-version précède la version finale. */
 export function compareVersions(a: string, b: string): number {
@@ -27,10 +28,10 @@ export function compareVersions(a: string, b: string): number {
 
 export async function checkForUpdates(source: string, currentVersion: string): Promise<UpdateCheckResult> {
   const trimmed = source.trim()
-  if (trimmed === '') return { ok: false, notConfigured: true, message: 'Aucune source de mises à jour configurée.' }
+  if (trimmed === '') return { ok: false, notConfigured: true, message: t('updates.notConfigured') }
   const isRepo = /^[\w.-]+\/[\w.-]+$/.test(trimmed)
   if (!isRepo && !/^https?:\/\//i.test(trimmed)) {
-    return { ok: false, message: 'Source invalide : indiquez « propriétaire/dépôt » GitHub ou une URL https.' }
+    return { ok: false, message: t('updates.badSource') }
   }
   const url = isRepo ? `https://api.github.com/repos/${trimmed}/releases/latest` : trimmed
   const res = await executeHttp(
@@ -49,16 +50,16 @@ export async function checkForUpdates(source: string, currentVersion: string): P
     { maxResponseBytes: 2 * 1024 * 1024 }
   )
   if (!res.ok) return { ok: false, message: res.message }
-  if (res.status === 404 && isRepo) return { ok: false, message: 'Aucune release publiée pour ce dépôt.' }
-  if (res.status >= 400) return { ok: false, message: `La source a répondu ${res.status}.` }
+  if (res.status === 404 && isRepo) return { ok: false, message: t('updates.noRelease') }
+  if (res.status >= 400) return { ok: false, message: t('updates.status', { status: res.status }) }
   let data: Record<string, unknown>
   try {
     data = JSON.parse(Buffer.from(res.bodyBase64, 'base64').toString('utf8')) as Record<string, unknown>
   } catch {
-    return { ok: false, message: 'Réponse illisible (JSON attendu).' }
+    return { ok: false, message: t('updates.unreadable') }
   }
   const latest = String((isRepo ? data['tag_name'] : data['version']) ?? '').replace(/^v/i, '')
-  if (!latest) return { ok: false, message: 'Version absente de la réponse.' }
+  if (!latest) return { ok: false, message: t('updates.noVersion') }
   const link = isRepo ? data['html_url'] : data['url']
   const notes = isRepo ? data['body'] : data['notes']
   return {

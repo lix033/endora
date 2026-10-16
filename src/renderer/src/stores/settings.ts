@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '@shared/settings'
 import { activeTheme, themeCssVariables, type Theme } from '@shared/themes'
+import { t } from '@shared/i18n'
 import { toast } from './ui'
 
 export const isMac = navigator.platform.toLowerCase().includes('mac')
@@ -46,7 +47,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       void window.endora.saveSettings(useSettings.getState().settings).then((r) => {
-        if (!r.ok) toast(`Réglages non enregistrés : ${r.message}`, 'error')
+        if (!r.ok) toast(t('store.settingsFailed', { message: r.message }), 'error')
       })
     }, 250)
   }

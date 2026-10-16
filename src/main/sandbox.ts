@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, session, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import type { MockScriptInput, MockScriptOutput } from '@shared/scripting/mock-runtime'
 import type { SandboxHttpRequest, SandboxHttpResult, ScriptExecution, ScriptOutcome } from '@shared/scripting/types'
+import { getLocale, t } from '@shared/i18n'
 
 export const SANDBOX_IPC = {
   run: 'sandbox:run',
@@ -76,7 +77,7 @@ export class ScriptSandbox {
     })
     ipcMain.handle(SANDBOX_IPC.http, async (event: IpcMainInvokeEvent, id: string, req: SandboxHttpRequest): Promise<SandboxHttpResult> => {
       const p = this.isSandbox(event) ? this.pending.get(id) : undefined
-      if (!p) return { ok: false, error: 'Exécution inconnue' }
+      if (!p) return { ok: false, error: t('sandbox.unknown') }
       return p.sendRequest(req)
     })
   }
@@ -116,7 +117,7 @@ export class ScriptSandbox {
     })
     this.win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     this.win.webContents.on('will-navigate', (e) => e.preventDefault())
-    this.win.webContents.on('render-process-gone', () => this.reset('Le processus des scripts s’est arrêté.'))
+    this.win.webContents.on('render-process-gone', () => this.reset(t('sandbox.crashed')))
     this.ready = new Promise((resolve) => {
       this.markReady = resolve
     })
@@ -147,35 +148,35 @@ export class ScriptSandbox {
   async runMock(input: MockScriptInput, timeoutMs: number): Promise<MockScriptOutput> {
     await this.ensure()
     const win = this.win
-    if (!win || win.isDestroyed()) return mockFailure(input, 'Sandbox des scripts indisponible.')
+    if (!win || win.isDestroyed()) return mockFailure(input, t('sandbox.unavailable'))
     return new Promise<MockScriptOutput>((resolve) => {
       const timer = setTimeout(() => {
         this.pendingMock.delete(input.id)
-        resolve(mockFailure(input, `Délai d’exécution du script dépassé (${Math.round(timeoutMs / 1000)} s).`))
-        this.reset('Exécution interrompue.')
+        resolve(mockFailure(input, t('sandbox.timeout', { seconds: Math.round(timeoutMs / 1000) })))
+        this.reset(t('sandbox.interrupted'))
       }, timeoutMs)
       this.pendingMock.set(input.id, { resolve, input, timer })
-      win.webContents.send(SANDBOX_IPC.mockRun, input)
+      win.webContents.send(SANDBOX_IPC.mockRun, { ...input, locale: getLocale() })
     })
   }
 
   async run(exec: ScriptExecution, sendRequest: Pending['sendRequest'], timeoutMs: number): Promise<ScriptOutcome> {
     await this.ensure()
     const win = this.win
-    if (!win || win.isDestroyed()) return failure(exec, 'Sandbox des scripts indisponible.')
+    if (!win || win.isDestroyed()) return failure(exec, t('sandbox.unavailable'))
     return new Promise<ScriptOutcome>((resolve) => {
       const timer = setTimeout(() => {
         // Une boucle infinie bloque la fenêtre : seule sa destruction l'arrête.
         this.pending.delete(exec.id)
-        resolve(failure(exec, `Délai d’exécution du script dépassé (${Math.round(timeoutMs / 1000)} s).`))
-        this.reset('Exécution interrompue.')
+        resolve(failure(exec, t('sandbox.timeout', { seconds: Math.round(timeoutMs / 1000) })))
+        this.reset(t('sandbox.interrupted'))
       }, timeoutMs)
       this.pending.set(exec.id, { resolve, sendRequest, timer })
-      win.webContents.send(SANDBOX_IPC.run, exec)
+      win.webContents.send(SANDBOX_IPC.run, { ...exec, locale: getLocale() })
     })
   }
 
   dispose(): void {
-    this.reset('Application fermée.')
+    this.reset(t('sandbox.closed'))
   }
 }

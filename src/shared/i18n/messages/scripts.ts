@@ -1,0 +1,83 @@
+// Scripts (pre-request / post-response), extraits insérés, panneau de génération de code.
+
+import type { Translation } from '../types'
+
+export const en = {
+  'scripts.prerequest': 'Pre-request',
+  'scripts.test': 'Post-response',
+  'scripts.snippets': 'Snippets',
+  'scripts.api': 'Available API:',
+
+  'snip.getEnv': 'Get an environment variable',
+  'snip.getEnv.code': `const value = pm.environment.get('name')`,
+  'snip.setEnv': 'Set an environment variable',
+  'snip.setEnv.code': `pm.environment.set('name', 'value')`,
+  'snip.setCollection': 'Set a collection variable',
+  'snip.setCollection.code': `pm.collectionVariables.set('name', 'value')`,
+  'snip.addHeader': 'Add a header',
+  'snip.timestamp': 'Store a timestamp in a variable',
+  'snip.timestamp.code': `pm.variables.set('now', new Date().toISOString())`,
+  'snip.sendRequest': 'Send a request',
+  'snip.skip': 'Skip the request',
+  'snip.status200': 'Status code is 200',
+  'snip.status200.code': `pm.test('Status code is 200', () => {\n  pm.response.to.have.status(200)\n})`,
+  'snip.responseTime': 'Response time',
+  'snip.responseTime.code': `pm.test('Response time is less than 500ms', () => {\n  pm.expect(pm.response.responseTime).to.be.below(500)\n})`,
+  'snip.jsonBody': 'JSON body',
+  'snip.jsonBody.code': `pm.test('Body has an id', () => {\n  const json = pm.response.json()\n  pm.expect(json).to.have.property('id')\n})`,
+  'snip.headerPresent': 'Header is present',
+  'snip.headerPresent.code': `pm.test('Content-Type is present', () => {\n  pm.response.to.have.header('Content-Type')\n})`,
+  'snip.jsonValue': 'JSON value check',
+  'snip.jsonValue.code': `pm.test('Expected value', () => {\n  pm.response.to.have.jsonBody('data.status', 'ok')\n})`,
+  'snip.storeValue': 'Store a response value',
+  'snip.logResponse': 'Log the response',
+
+  'code.title': 'Code',
+  'code.close': 'Close code panel',
+  'code.language': 'Language',
+  'code.optionsTitle': 'Generator options',
+  'code.options': 'Options',
+  'code.copied': 'Code copied',
+  'code.resolve': 'Resolve variables and apply auth',
+  'code.noOptions': 'No options for this language.'
+} satisfies Translation<Record<string, unknown>>
+
+export const fr: Translation<typeof en> = {
+  'scripts.prerequest': 'Pre-request',
+  'scripts.test': 'Post-response',
+  'scripts.snippets': 'Extraits',
+  'scripts.api': 'API disponible :',
+
+  'snip.getEnv': 'Lire une variable d’environnement',
+  'snip.getEnv.code': `const valeur = pm.environment.get('nom')`,
+  'snip.setEnv': 'Définir une variable d’environnement',
+  'snip.setEnv.code': `pm.environment.set('nom', 'valeur')`,
+  'snip.setCollection': 'Définir une variable de collection',
+  'snip.setCollection.code': `pm.collectionVariables.set('nom', 'valeur')`,
+  'snip.addHeader': 'Ajouter un header',
+  'snip.timestamp': 'Horodatage dans une variable',
+  'snip.timestamp.code': `pm.variables.set('maintenant', new Date().toISOString())`,
+  'snip.sendRequest': 'Envoyer une requête',
+  'snip.skip': 'Ne pas envoyer la requête',
+  'snip.status200': 'Statut 200',
+  'snip.status200.code': `pm.test('Le statut est 200', () => {\n  pm.response.to.have.status(200)\n})`,
+  'snip.responseTime': 'Temps de réponse',
+  'snip.responseTime.code': `pm.test('Réponse en moins de 500 ms', () => {\n  pm.expect(pm.response.responseTime).to.be.below(500)\n})`,
+  'snip.jsonBody': 'Body JSON',
+  'snip.jsonBody.code': `pm.test('Le body contient un id', () => {\n  const json = pm.response.json()\n  pm.expect(json).to.have.property('id')\n})`,
+  'snip.headerPresent': 'Header présent',
+  'snip.headerPresent.code': `pm.test('Content-Type présent', () => {\n  pm.response.to.have.header('Content-Type')\n})`,
+  'snip.jsonValue': 'Valeur JSON',
+  'snip.jsonValue.code': `pm.test('Valeur attendue', () => {\n  pm.response.to.have.jsonBody('data.status', 'ok')\n})`,
+  'snip.storeValue': 'Stocker une valeur de la réponse',
+  'snip.logResponse': 'Journaliser la réponse',
+
+  'code.title': 'Code',
+  'code.close': 'Fermer le panneau de code',
+  'code.language': 'Langage',
+  'code.optionsTitle': 'Options du générateur',
+  'code.options': 'Options',
+  'code.copied': 'Code copié',
+  'code.resolve': 'Résoudre les variables et appliquer l’auth',
+  'code.noOptions': 'Aucune option pour ce langage.'
+}

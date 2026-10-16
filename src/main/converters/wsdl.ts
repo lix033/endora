@@ -6,6 +6,7 @@
 // « description> » (2.0).
 
 import { attr, kids, kidsWithPrefix, local, namespaceOf, parseXml, root as rootOf, type XNode } from './xml'
+import { t } from '@shared/i18n'
 
 type Json = Record<string, unknown>
 type SoapVersion = '1.1' | '1.2'
@@ -201,5 +202,5 @@ export function wsdlToCollection(text: string, fileName: string): Json {
   if (v1) return wsdl11(v1, fileName)
   const v2 = rootOf(doc, 'description')
   if (v2) return wsdl20(v2, fileName)
-  throw new Error('Document WSDL sans élément definitions (1.1) ni description (2.0).')
+  throw new Error(t('importer.wsdlInvalid'))
 }

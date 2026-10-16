@@ -6,6 +6,7 @@ import aws4 from 'aws4'
 import { importPKCS8, SignJWT, type JWTHeaderParameters } from 'jose'
 import { authBool, authString, type AuthConfig } from '@shared/auth'
 import { getHeader, removeHeader, setHeader, type PreparedRequest } from '../http'
+import { t } from '@shared/i18n'
 
 export type SignResult = { ok: true; prepared: PreparedRequest } | { ok: false; message: string }
 
@@ -126,7 +127,7 @@ export function signOAuth1(auth: AuthConfig, p: PreparedRequest, now = Date.now(
   const method = authString(auth, 'signatureMethod') || 'HMAC-SHA1'
   const [family, hashName] = method.split('-') as [string, string | undefined]
   if (!consumerKey) return { ok: true, prepared: p }
-  if (family === 'RSA' && !authString(auth, 'privateKey')) return { ok: false, message: 'OAuth 1.0 : clé privée RSA manquante.' }
+  if (family === 'RSA' && !authString(auth, 'privateKey')) return { ok: false, message: t('auth.oauth1NoKey') }
 
   const isForm = p.bodyMode === 'urlencoded' && p.body !== undefined
   const oauth: Array<[string, string]> = [
@@ -326,7 +327,7 @@ function parseJsonParam(auth: AuthConfig, key: string): Record<string, unknown> 
   const text = authString(auth, key).trim()
   if (text === '') return {}
   const parsed = JSON.parse(text) as unknown
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error(`« ${key} » doit être un objet JSON`)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error(t('auth.notJsonObject', { key }))
   return parsed as Record<string, unknown>
 }
 
@@ -343,7 +344,7 @@ export async function signJwt(auth: AuthConfig, p: PreparedRequest): Promise<Sig
       token = await jwt.sign(new Uint8Array(Buffer.from(secret, authBool(auth, 'isSecretBase64Encoded') ? 'base64' : 'utf8')))
     } else {
       const pem = authString(auth, 'privateKey')
-      if (!pem) return { ok: false, message: 'JWT : clé privée manquante.' }
+      if (!pem) return { ok: false, message: t('auth.jwtNoKey') }
       token = await jwt.sign(await importPKCS8(pem, alg))
     }
     if (authString(auth, 'addTokenTo') === 'queryParam') return { ok: true, prepared: addQuery(p, authString(auth, 'queryParamKey') || 'token', token) }
@@ -361,7 +362,7 @@ export async function signAsap(auth: AuthConfig, p: PreparedRequest, now = Date.
     const aud = (claims['aud'] as string | undefined) ?? authString(auth, 'aud')
     const kid = (claims['kid'] as string | undefined) ?? authString(auth, 'kid')
     const privateKey = authString(auth, 'privateKey')
-    if (!iss || !aud || !kid || !privateKey) return { ok: false, message: 'ASAP : iss, aud, kid et clé privée sont requis.' }
+    if (!iss || !aud || !kid || !privateKey) return { ok: false, message: t('auth.asapMissing') }
     const alg = authString(auth, 'alg') || 'RS256'
     const iat = Math.floor(now / 1000)
     const exp = Number.parseInt(authString(auth, 'exp'), 10) || 3600

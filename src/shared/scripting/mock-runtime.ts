@@ -2,6 +2,7 @@
 // API exposée : pm.request (lecture), pm.response (réponse modifiable, préremplie avec l'exemple
 // choisi), pm.state (état de la session), pm.session, pm.route, console.
 
+import { t, type Locale } from '../i18n'
 import type { LogLevel } from './types'
 
 export interface MockResponseData {
@@ -12,6 +13,8 @@ export interface MockResponseData {
 
 export interface MockScriptInput {
   id: string
+  /** Langue des messages d'erreur (le sandbox a son propre contexte). */
+  locale?: Locale
   script: string
   request: {
     method: string
@@ -77,7 +80,7 @@ export async function runMockScript(input: MockScriptInput, compile: Compile): P
     },
     status(code: number) {
       const n = Number(code)
-      if (!Number.isInteger(n) || n < 100 || n > 599) throw new Error(`Code de statut invalide : ${code}`)
+      if (!Number.isInteger(n) || n < 100 || n > 599) throw new Error(t('mocks.err.badStatus', { code: String(code) }))
       response.status = n
       return res
     },

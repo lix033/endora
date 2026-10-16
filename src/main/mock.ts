@@ -6,6 +6,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { networkInterfaces } from 'node:os'
 import type { StorageResult } from '@shared/api'
 import { importCollection } from '@shared/collection-v21'
+import { t } from '@shared/i18n'
 import {
   buildRoutes,
   MOCK_BASE_PORT,
@@ -120,7 +121,7 @@ export class MockManager {
 
   private result(id: string): MockActionResult {
     const c = this.configs.get(id)
-    return c ? { ok: true, mock: this.state(c) } : fail('Mock introuvable.')
+    return c ? { ok: true, mock: this.state(c) } : fail(t('mocks.err.notFound'))
   }
 
   private async persist(): Promise<void> {
@@ -134,12 +135,12 @@ export class MockManager {
     for (let port = MOCK_BASE_PORT; port < MOCK_BASE_PORT + 1000; port++) {
       if (!taken.has(port) && (await portFree(port, host))) return port
     }
-    throw new Error('Aucun port libre trouvé.')
+    throw new Error(t('mocks.err.noPort'))
   }
 
   async create(input: NewMockInput): Promise<MockActionResult> {
     const raw = await this.deps.readCollection(input.collectionId)
-    if (raw == null) return fail('Collection introuvable.')
+    if (raw == null) return fail(t('mocks.err.collectionNotFound'))
     const host = input.publicAccess ? '0.0.0.0' : '127.0.0.1'
     let port: number
     try {
@@ -171,7 +172,7 @@ export class MockManager {
 
   async update(id: string, patch: MockPatch): Promise<MockActionResult> {
     const c = this.configs.get(id)
-    if (!c) return fail('Mock introuvable.')
+    if (!c) return fail(t('mocks.err.notFound'))
     const next: MockConfig = { ...c, ...patch, name: patch.name !== undefined ? patch.name.trim() || c.name : c.name }
     // Passage en déploiement manuel : on fige la version courante.
     if (c.autoDeploy && !next.autoDeploy) {
@@ -190,7 +191,7 @@ export class MockManager {
   }
 
   async remove(id: string): Promise<StorageResult> {
-    if (!this.configs.has(id)) return { ok: false, message: 'Mock introuvable.' }
+    if (!this.configs.has(id)) return { ok: false, message: t('mocks.err.notFound') }
     await this.stopRuntime(id)
     this.configs.delete(id)
     this.logs.delete(id)
@@ -201,7 +202,7 @@ export class MockManager {
 
   async start(id: string): Promise<MockActionResult> {
     const c = this.configs.get(id)
-    if (!c) return fail('Mock introuvable.')
+    if (!c) return fail(t('mocks.err.notFound'))
     c.enabled = true
     if (!this.runtimes.has(id)) await this.startRuntime(c)
     await this.persist()
@@ -210,7 +211,7 @@ export class MockManager {
 
   async stop(id: string): Promise<MockActionResult> {
     const c = this.configs.get(id)
-    if (!c) return fail('Mock introuvable.')
+    if (!c) return fail(t('mocks.err.notFound'))
     c.enabled = false
     await this.stopRuntime(id)
     this.errors.delete(id)
@@ -221,9 +222,9 @@ export class MockManager {
   /** Déploiement manuel : sert la version enregistrée de la collection. */
   async deploy(id: string): Promise<MockActionResult> {
     const c = this.configs.get(id)
-    if (!c) return fail('Mock introuvable.')
+    if (!c) return fail(t('mocks.err.notFound'))
     const raw = await this.deps.readCollection(c.collectionId)
-    if (raw == null) return fail('Collection introuvable.')
+    if (raw == null) return fail(t('mocks.err.collectionNotFound'))
     c.deployedAt = new Date().toISOString()
     if (!c.autoDeploy) c.snapshot = raw
     if (this.runtimes.has(id)) await this.reload(c)
@@ -274,7 +275,7 @@ export class MockManager {
     if (!rt) return
     const col = await this.collectionOf(c)
     if (!col) {
-      this.errors.set(c.id, 'Collection introuvable : le mock ne répond plus qu’avec des erreurs 404.')
+      this.errors.set(c.id, t('mocks.err.collectionGone'))
       rt.routes = []
       delete rt.collectionName
       return
@@ -291,7 +292,7 @@ export class MockManager {
       await listen(server, c.port, c.publicAccess ? '0.0.0.0' : '127.0.0.1')
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
-      this.errors.set(c.id, code === 'EADDRINUSE' ? `Le port ${c.port} est déjà utilisé par une autre application.` : (err as Error).message)
+      this.errors.set(c.id, code === 'EADDRINUSE' ? t('mocks.err.portInUse', { port: c.port }) : (err as Error).message)
       return
     }
     this.runtimes.set(c.id, { server, routes: [], state: new Map() })
@@ -333,7 +334,7 @@ export class MockManager {
     const error = (status: number, body: Record<string, unknown>) =>
       finish({ status, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: json(body) })
 
-    if (!c || !rt) return error(503, { error: 'Mock arrêté.' })
+    if (!c || !rt) return error(503, { error: t('mocks.err.stopped') })
 
     if (method === 'OPTIONS' && req.headers['access-control-request-method']) {
       return finish({
@@ -348,14 +349,14 @@ export class MockManager {
     }
 
     if (!c.publicAccess && req.headers[MOCK_HEADERS.key] !== c.apiKey) {
-      return error(401, { error: 'Mock privé : clé absente ou invalide.', hint: `Ajoutez l’en-tête ${MOCK_HEADERS.key}.` })
+      return error(401, { error: t('mocks.err.private'), hint: t('mocks.err.privateHint', { header: MOCK_HEADERS.key }) })
     }
 
     let body: string
     try {
       body = await readBody(req)
     } catch {
-      return error(413, { error: 'Body trop volumineux (1 Mo maximum).' })
+      return error(413, { error: t('mocks.err.tooLarge') })
     }
 
     const session = sessionFromHeader(req.headers[MOCK_HEADERS.session], c.enableSession)
@@ -375,13 +376,13 @@ export class MockManager {
       response = {
         status: 404,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: json({ error: `Aucun exemple enregistré pour « ${match.route.name} ».`, hint: 'Envoyez la requête puis « Enregistrer comme exemple ».' })
+        body: json({ error: t('mocks.err.noExample', { name: match.route.name }), hint: t('mocks.err.noExampleHint') })
       }
     } else {
       response = {
         status: 404,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: json({ error: 'Aucune requête de la collection ne correspond.', method, path: url.pathname })
+        body: json({ error: t('mocks.err.noRoute'), method, path: url.pathname })
       }
     }
 
@@ -403,7 +404,7 @@ export class MockManager {
       scriptLogs = out.logs
       if (!out.ok) {
         entry.error = out.error
-        return error(500, { error: 'Erreur dans le script du mock.', message: out.error })
+        return error(500, { error: t('mocks.err.script'), message: out.error })
       }
       rt.state.set(session, out.state)
       response = out.response

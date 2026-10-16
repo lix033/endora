@@ -21,6 +21,7 @@ import type {
 import { effectiveValue, resolveDeep, resolveString, type Scope, type Variable } from '@shared/variables'
 import { sendWithAuth } from './auth'
 import { executeHttp, prepareRequest, type SendOptions } from './http'
+import { t } from '@shared/i18n'
 
 export type ScriptRunner = (
   exec: ScriptExecution,
@@ -115,8 +116,8 @@ export async function executeRequest(input: ExecutionInput, runScripts: ScriptRu
   const out: ExecutionOutput = { result: null, skipped: false, tests: [], logs: [], mutations: [], sentRequests: [] }
   const outward = [...input.chain].reverse()
   const scriptsFor = (event: 'prerequest' | 'test') => [
-    ...outward.map((p) => ({ code: p.scripts[event], source: `${p.kind === 'collection' ? 'Collection' : 'Dossier'} « ${p.name} »` })),
-    { code: input.draft.scripts[event], source: 'Requête' }
+    ...outward.map((p) => ({ code: p.scripts[event], source: p.kind === 'collection' ? t('exec.sourceCollection', { name: p.name }) : t('exec.sourceFolder', { name: p.name }) })),
+    { code: input.draft.scripts[event], source: t('exec.sourceRequest') }
   ].filter((s) => s.code.trim() !== '')
 
   let vars: ScriptVariables = {

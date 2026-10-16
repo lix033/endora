@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
+import { dateLocale, t, type MessageKey } from '@shared/i18n'
 import { MOCK_HEADERS, type MockState } from '@shared/mock'
 import { isLoose } from '@shared/model'
 import { editorTheme } from '../editor'
@@ -16,37 +17,29 @@ const NEW = 'new'
 
 const extensions = [javascript(), EditorView.lineWrapping, editorTheme]
 
-/** Extraits du script de mock (textes propres à Endora). */
-const SNIPPETS: Array<{ label: string; code: string }> = [
-  { label: 'Réponse JSON dynamique', code: `pm.response.status(200).json({ id: pm.request.params.id, date: new Date().toISOString() })` },
-  {
-    label: 'Ressource en mémoire (CRUD)',
-    code: `const items = pm.state.get('items') || []
-if (pm.request.method === 'POST') {
-  const item = { id: items.length + 1, ...pm.request.json() }
-  pm.state.set('items', [...items, item])
-  pm.response.status(201).json(item)
-} else if (pm.request.method === 'GET' && !pm.request.params.id) {
-  pm.response.json(items)
-}`
-  },
-  { label: 'Compteur par session', code: `const n = (pm.state.get('compteur') || 0) + 1\npm.state.set('compteur', n)\npm.response.header('X-Compteur', n)` },
-  { label: 'Exiger un jeton', code: `if (!pm.request.header('authorization')) {\n  pm.response.status(401).json({ error: 'Non authentifié' })\n}` },
-  { label: 'Simuler une erreur', code: `if (pm.request.query.erreur) {\n  pm.response.status(500).json({ error: 'Erreur simulée' })\n}` },
-  { label: 'Journaliser la requête', code: `console.log(pm.request.method, pm.request.path, pm.session)` }
+/** Extraits du script de mock (textes propres à Endora), dans la langue de l'interface. */
+const SNIPPETS: Array<{ label: MessageKey; code: MessageKey }> = [
+  { label: 'mocks.snip.json', code: 'mocks.snip.json.code' },
+  { label: 'mocks.snip.crud', code: 'mocks.snip.crud.code' },
+  { label: 'mocks.snip.counter', code: 'mocks.snip.counter.code' },
+  { label: 'mocks.snip.token', code: 'mocks.snip.token.code' },
+  { label: 'mocks.snip.error', code: 'mocks.snip.error.code' },
+  { label: 'mocks.snip.log', code: 'mocks.snip.log.code' }
 ]
 
-const copy = (text: string, what: string) => void window.endora.writeClipboard(text).then(() => toast(`${what} copiée.`))
+const copy = (text: string, what: string) => void window.endora.writeClipboard(text).then(() => toast(t('common.copied', { what })))
 
 function StatusBadge({ mock }: { mock: MockState }) {
-  if (mock.error) return <span className="mock-status error">Erreur</span>
-  return <span className={`mock-status ${mock.running ? 'on' : ''}`}>{mock.running ? 'En marche' : 'Arrêté'}</span>
+  if (mock.error) return <span className="mock-status error">{t('mocks.error')}</span>
+  return <span className={`mock-status ${mock.running ? 'on' : ''}`}>{mock.running ? t('mocks.running') : t('mocks.stopped')}</span>
 }
 
 function NewMockForm({ onCreated }: { onCreated: (id: string) => void }) {
   const collections = useWorkspace((s) => s.collections)
-  const [collectionId, setCollectionId] = useState(collections.find((c) => !isLoose(c))?.id ?? collections[0]?.id ?? '')
-  const collection = collections.find((c) => c.id === collectionId)
+  const [collectionId, setCollectionId] = useState('')
+  // Choix explicite, sinon première collection : le formulaire peut s'afficher avant le chargement
+  // des collections (onglet restauré au démarrage).
+  const collection = collections.find((c) => c.id === collectionId) ?? collections.find((c) => !isLoose(c)) ?? collections[0]
   const [name, setName] = useState('')
   const [publicAccess, setPublicAccess] = useState(false)
   const [autoDeploy, setAutoDeploy] = useState(true)
@@ -54,29 +47,31 @@ function NewMockForm({ onCreated }: { onCreated: (id: string) => void }) {
   const [creating, setCreating] = useState(false)
 
   const create = async () => {
-    if (!collection) return
+    if (!collection || creating) return
     setCreating(true)
-    const mock = await useMocks.getState().create({ name: name.trim() || `Mock ${collection.name}`, collectionId, publicAccess, autoDeploy, enableSession })
-    setCreating(false)
+    let mock: MockState | null = null
+    try {
+      mock = await useMocks.getState().create({ name: name.trim() || t('mocks.defaultName', { collection: collection.name }), collectionId: collection.id, publicAccess, autoDeploy, enableSession })
+    } finally {
+      setCreating(false)
+    }
     if (mock) {
-      toast(`Mock « ${mock.config.name} » démarré sur ${mock.url}.`)
+      toast(t('mocks.created', { name: mock.config.name, url: mock.url }))
       onCreated(mock.config.id)
     }
   }
 
   return (
     <div className="mock-form">
-      <h3>Nouveau mock server</h3>
-      <p className="muted">
-        Le mock répond aux requêtes de la collection avec leurs exemples enregistrés. Son URL est créée automatiquement.
-      </p>
+      <h3>{t('mocks.formTitle')}</h3>
+      <p className="muted">{t('mocks.formIntro')}</p>
       {collections.length === 0 ? (
-        <p>Créez ou importez d’abord une collection.</p>
+        <p>{t('mocks.needCollection')}</p>
       ) : (
         <>
           <label className="field">
-            <span>Collection</span>
-            <select value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>
+            <span>{t('mocks.collection')}</span>
+            <select value={collection?.id ?? ''} onChange={(e) => setCollectionId(e.target.value)}>
               {collections.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -85,30 +80,30 @@ function NewMockForm({ onCreated }: { onCreated: (id: string) => void }) {
             </select>
           </label>
           <label className="field">
-            <span>Nom</span>
-            <input value={name} placeholder={collection ? `Mock ${collection.name}` : 'Nom du mock'} onChange={(e) => setName(e.target.value)} />
+            <span>{t('mocks.name')}</span>
+            <input value={name} placeholder={collection ? t('mocks.defaultName', { collection: collection.name }) : t('mocks.namePlaceholder')} onChange={(e) => setName(e.target.value)} />
           </label>
           <Toggle
-            label="Autoriser l’accès public"
-            hint={`Joignable depuis le réseau local, sans clé. Sinon : cette machine uniquement, avec l’en-tête ${MOCK_HEADERS.key}.`}
+            label={t('mocks.publicAccess')}
+            hint={t('mocks.publicHintNew', { header: MOCK_HEADERS.key })}
             checked={publicAccess}
             onChange={setPublicAccess}
           />
           <Toggle
-            label="Déployer automatiquement les modifications"
-            hint="Les changements de la collection sont servis dès leur enregistrement. Sinon : bouton « Déployer »."
+            label={t('mocks.autoDeploy')}
+            hint={t('mocks.autoDeployHintNew')}
             checked={autoDeploy}
             onChange={setAutoDeploy}
           />
           <Toggle
-            label="Activer les sessions"
-            hint={`Chaque valeur de l’en-tête ${MOCK_HEADERS.session} a son propre état (pm.state).`}
+            label={t('mocks.sessions')}
+            hint={t('mocks.sessionsHintNew', { header: MOCK_HEADERS.session })}
             checked={enableSession}
             onChange={setEnableSession}
           />
           <div className="row">
             <button className="primary" disabled={!collection || creating} onClick={() => void create()}>
-              {creating ? 'Création…' : 'Créer le mock'}
+              {creating ? t('mocks.creating') : t('mocks.create')}
             </button>
           </div>
         </>
@@ -120,19 +115,19 @@ function NewMockForm({ onCreated }: { onCreated: (id: string) => void }) {
 function ScriptEditor({ mock }: { mock: MockState }) {
   const [script, setScript] = useState(mock.config.script)
   const dirty = script !== mock.config.script
-  const save = () => void useMocks.getState().update(mock.config.id, { script }).then((ok) => ok && toast('Script du mock enregistré.'))
+  const save = () => void useMocks.getState().update(mock.config.id, { script }).then((ok) => ok && toast(t('mocks.scriptSaved')))
   const append = (code: string) => setScript((s) => (s.trim() === '' ? code : `${s.replace(/\s+$/, '')}\n\n${code}`))
   return (
     <section className="mock-section">
       <div className="mock-section-head">
-        <h4>Script du mock</h4>
+        <h4>{t('mocks.script')}</h4>
         <button className="primary small-btn" disabled={!dirty} onClick={save}>
-          Enregistrer le script
+          {t('mocks.saveScript')}
         </button>
       </div>
       <p className="muted small">
-        Exécuté à chaque requête reçue, après le choix de l’exemple : <code>pm.request</code>, <code>pm.response</code> (préremplie avec l’exemple),{' '}
-        <code>pm.state</code> (état de la session), <code>pm.session</code>, <code>pm.route</code>, <code>console</code>. Sans accès réseau.
+        {t('mocks.scriptHint')} <code>pm.request</code>, <code>pm.response</code>, <code>pm.state</code>, <code>pm.session</code>, <code>pm.route</code>,{' '}
+        <code>console</code>.
       </p>
       <div className="mock-script">
         <div
@@ -148,10 +143,10 @@ function ScriptEditor({ mock }: { mock: MockState }) {
           <CodeMirror key={mock.config.id} value={script} height="100%" theme="none" extensions={extensions} onChange={setScript} />
         </div>
         <aside className="snippets">
-          <p className="muted small">Extraits</p>
+          <p className="muted small">{t('mocks.snippets')}</p>
           {SNIPPETS.map((s) => (
-            <button key={s.label} className="link" onClick={() => append(s.code)}>
-              {s.label}
+            <button key={s.label} className="link" onClick={() => append(t(s.code))}>
+              {t(s.label)}
             </button>
           ))}
         </aside>
@@ -169,24 +164,24 @@ function MockLog({ mock }: { mock: MockState }) {
   return (
     <section className="mock-section">
       <div className="mock-section-head">
-        <h4>Journal</h4>
+        <h4>{t('mocks.log')}</h4>
         <div className="row tight">
-          <button className="small-btn" onClick={() => void useMocks.getState().resetState(id)} title="Vide pm.state pour toutes les sessions">
-            Réinitialiser l’état
+          <button className="small-btn" onClick={() => void useMocks.getState().resetState(id)} title={t('mocks.resetStateTitle')}>
+            {t('mocks.resetState')}
           </button>
           <button className="small-btn" disabled={!logs?.length} onClick={() => void useMocks.getState().clearLogs(id)}>
-            Effacer
+            {t('mocks.clearLog')}
           </button>
         </div>
       </div>
       {!logs?.length ? (
-        <p className="muted small">Aucune requête reçue.</p>
+        <p className="muted small">{t('mocks.noRequests')}</p>
       ) : (
         <table className="mock-log">
           <tbody>
             {logs.map((l) => (
               <tr key={l.id}>
-                <td className="muted">{new Date(l.time).toLocaleTimeString('fr-FR')}</td>
+                <td className="muted">{new Date(l.time).toLocaleTimeString(dateLocale())}</td>
                 <td className={`mono m-${l.method}`}>{l.method}</td>
                 <td className="mono">
                   {l.path}
@@ -218,14 +213,14 @@ function MockDetail({ mock }: { mock: MockState }) {
   const set = (patch: Parameters<typeof actions.update>[1]) => void actions.update(config.id, patch)
 
   const remove = async () => {
-    const choice = await confirmDialog('Supprimer le mock', `« ${config.name} » sera arrêté et supprimé. La collection n’est pas modifiée.`, [
-      { label: 'Annuler', value: 'cancel' },
-      { label: 'Supprimer', value: 'delete', variant: 'danger' }
+    const choice = await confirmDialog(t('mocks.deleteTitle'), t('mocks.deleteMessage', { name: config.name }), [
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.delete'), value: 'delete', variant: 'danger' }
     ])
     if (choice === 'delete' && (await actions.remove(config.id))) useTabs.getState().openView({ kind: 'mocks', mockId: NEW })
   }
 
-  const curl = `curl ${mock.url}/…${config.publicAccess ? '' : ` -H "${MOCK_HEADERS.key}: ${showKey ? config.apiKey : '<clé>'}"`}${config.enableSession ? ` -H "${MOCK_HEADERS.session}: alice"` : ''}`
+  const curl = `curl ${mock.url}/…${config.publicAccess ? '' : ` -H "${MOCK_HEADERS.key}: ${showKey ? config.apiKey : t('mocks.keyPlaceholder')}"`}${config.enableSession ? ` -H "${MOCK_HEADERS.session}: alice"` : ''}`
 
   return (
     <div className="mock-detail">
@@ -246,14 +241,14 @@ function MockDetail({ mock }: { mock: MockState }) {
               }}
             />
           ) : (
-            <h2 className="entity-title" onDoubleClick={() => setEditingName(true)} title="Double-cliquez pour renommer">
+            <h2 className="entity-title" onDoubleClick={() => setEditingName(true)} title={t('mocks.renameHint')}>
               {config.name}
             </h2>
           )}
           <div className="row tight muted small">
             <StatusBadge mock={mock} />
             <span>
-              Collection :{' '}
+              {t('mocks.collectionLabel')}{' '}
               {mock.collectionName ? (
                 <button className="link" onClick={() => useTabs.getState().openView({ kind: 'collection', collectionId: config.collectionId })}>
                   {mock.collectionName}
@@ -263,14 +258,14 @@ function MockDetail({ mock }: { mock: MockState }) {
               )}
             </span>
             <span>
-              · {mock.routes} requête{mock.routes > 1 ? 's' : ''}, {mock.examples} exemple{mock.examples > 1 ? 's' : ''}
+              {t('mocks.counts', { routes: mock.routes, examples: mock.examples })}
             </span>
           </div>
         </div>
         <div className="row">
-          {mock.running ? <button onClick={() => void actions.stop(config.id)}>Arrêter</button> : <button className="primary" onClick={() => void actions.start(config.id)}>Démarrer</button>}
+          {mock.running ? <button onClick={() => void actions.stop(config.id)}>{t('mocks.stop')}</button> : <button className="primary" onClick={() => void actions.start(config.id)}>{t('mocks.start')}</button>}
           <button className="danger" onClick={() => void remove()}>
-            Supprimer
+            {t('common.delete')}
           </button>
         </div>
       </div>
@@ -279,64 +274,64 @@ function MockDetail({ mock }: { mock: MockState }) {
 
       <section className="mock-card">
         <div className="mock-url">
-          <span className="muted small">URL</span>
+          <span className="muted small">{t('mocks.url')}</span>
           <code>{mock.url}</code>
-          <button className="small-btn" onClick={() => copy(mock.url, 'URL')}>
-            Copier
+          <button className="small-btn" onClick={() => copy(mock.url, t('mocks.urlWord'))}>
+            {t('common.copy')}
           </button>
         </div>
         {mock.networkUrl && (
           <div className="mock-url">
-            <span className="muted small">Réseau local</span>
+            <span className="muted small">{t('mocks.networkUrl')}</span>
             <code>{mock.networkUrl}</code>
-            <button className="small-btn" onClick={() => copy(mock.networkUrl!, 'URL')}>
-              Copier
+            <button className="small-btn" onClick={() => copy(mock.networkUrl!, t('mocks.urlWord'))}>
+              {t('common.copy')}
             </button>
           </div>
         )}
         {!config.publicAccess && (
           <div className="mock-url">
-            <span className="muted small">Clé ({MOCK_HEADERS.key})</span>
+            <span className="muted small">{t('mocks.key', { header: MOCK_HEADERS.key })}</span>
             <code>{showKey ? config.apiKey : '•'.repeat(24)}</code>
             <button className="small-btn" onClick={() => setShowKey((v) => !v)}>
-              {showKey ? 'Masquer' : 'Afficher'}
+              {showKey ? t('common.hide') : t('common.show')}
             </button>
-            <button className="small-btn" onClick={() => copy(config.apiKey, 'Clé')}>
-              Copier
+            <button className="small-btn" onClick={() => copy(config.apiKey, t('mocks.keyWord'))}>
+              {t('common.copy')}
             </button>
           </div>
         )}
         <code className="mock-curl">{curl}</code>
         <p className="muted small">
-          Choisir un exemple : en-têtes <code>{MOCK_HEADERS.responseName}</code> ou <code>{MOCK_HEADERS.responseCode}</code>.
+          {t('mocks.chooseExample')} {t('mocks.chooseExampleHeaders', { name: MOCK_HEADERS.responseName, code: MOCK_HEADERS.responseCode })}
         </p>
       </section>
 
       <section className="mock-section">
         <Toggle
-          label="Autoriser l’accès public"
-          hint={`Joignable depuis le réseau local, sans clé. Désactivé : mock privé, cette machine uniquement, en-tête ${MOCK_HEADERS.key} obligatoire.`}
+          label={t('mocks.publicAccess')}
+          hint={t('mocks.publicHint', { header: MOCK_HEADERS.key })}
           checked={config.publicAccess}
           onChange={(v) => set({ publicAccess: v })}
         />
         <Toggle
-          label="Déployer automatiquement les modifications"
-          hint="Les changements de la collection sont servis dès leur enregistrement."
+          label={t('mocks.autoDeploy')}
+          hint={t('mocks.autoDeployHint')}
           checked={config.autoDeploy}
           onChange={(v) => set({ autoDeploy: v })}
         />
         {!config.autoDeploy && (
           <div className="setting">
             <div>
-              <div>Version déployée</div>
-              <div className="muted small">{config.deployedAt ? new Date(config.deployedAt).toLocaleString('fr-FR') : '—'}</div>
+              <div>{t('mocks.deployedVersion')}</div>
+              <div className="muted small">{config.deployedAt ? new Date(config.deployedAt).toLocaleString(dateLocale()) : '—'}</div>
             </div>
-            <button onClick={() => void actions.deploy(config.id)}>Déployer</button>
+            <button onClick={() => void actions.deploy(config.id)}>{t('mocks.deploy')}</button>
           </div>
         )}
         <Toggle
-          label="Activer les sessions"
-          hint={`Chaque valeur de l’en-tête ${MOCK_HEADERS.session} a son propre état ; sans en-tête, état partagé.`}
+          label={t('mocks.sessions')}
+          hint={t('mocks.sessionsHint', { header: MOCK_HEADERS.session })}
           checked={config.enableSession}
           onChange={(v) => set({ enableSession: v })}
         />
@@ -357,8 +352,8 @@ export function MocksView({ tab }: { tab: Tab }) {
   return (
     <div className="settings services">
       <nav className="settings-nav">
-        <h2>Services</h2>
-        <h4 className="nav-group">Mock servers</h4>
+        <h2>{t('mocks.services')}</h2>
+        <h4 className="nav-group">{t('mocks.group')}</h4>
         {mocks.map((m) => (
           <button key={m.config.id} className={selected?.config.id === m.config.id ? 'active' : ''} onClick={() => select(m.config.id)} title={m.url}>
             <span className={`status-dot ${m.error ? 'error' : m.running ? 'on' : ''}`} />
@@ -366,11 +361,11 @@ export function MocksView({ tab }: { tab: Tab }) {
           </button>
         ))}
         <button className={`link nav-add ${!selected ? 'active' : ''}`} onClick={() => select(NEW)}>
-          + Nouveau mock
+          {t('mocks.new')}
         </button>
       </nav>
       <div className="settings-body">
-        {!loaded ? <p className="muted">Chargement…</p> : selected ? <MockDetail key={selected.config.id} mock={selected} /> : <NewMockForm onCreated={select} />}
+        {!loaded ? <p className="muted">{t('common.loading')}</p> : selected ? <MockDetail key={selected.config.id} mock={selected} /> : <NewMockForm onCreated={select} />}
       </div>
     </div>
   )

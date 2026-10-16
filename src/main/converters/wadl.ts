@@ -3,6 +3,7 @@
 // premiers caractères. Les paramètres de chemin deviennent des {{variables}}.
 
 import { attr, kids, parseXml, root as rootOf, type XNode } from './xml'
+import { t } from '@shared/i18n'
 
 type Json = Record<string, unknown>
 
@@ -41,7 +42,7 @@ function walk(resource: XNode, base: string, inherited: XNode[]): Json[] {
 
 export function wadlToCollection(text: string, fileName: string): Json {
   const app = rootOf(parseXml(text), 'application')
-  if (!app) throw new Error('Document WADL sans élément application.')
+  if (!app) throw new Error(t('importer.wadlInvalid'))
   const folders: Json[] = []
   for (const resources of kids(app, 'resources')) {
     const base = attr(resources, 'base')

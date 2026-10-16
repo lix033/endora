@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { setLocale, t } from '@shared/i18n'
 import logo from './assets/logo.svg'
 import { CodePanel } from './components/CodePanel'
 import { ConsolePanel } from './components/ConsolePanel'
@@ -16,7 +17,9 @@ import { TopBar } from './components/TopBar'
 import { dispatch, installKeyboardShortcuts, useLayout } from './shortcuts'
 import { useConsole } from './stores/console'
 import { useEnvironments } from './stores/environments'
+import { useSettings } from './stores/settings'
 import { startMockEvents } from './stores/mocks'
+import { startUpdaterEvents } from './stores/updater'
 import { startSessionPersistence, useTabs, type Tab } from './stores/tabs'
 import { useWorkspace } from './stores/workspace'
 
@@ -39,7 +42,7 @@ function initWorkspace(): void {
       useEnvironments.subscribe((s, prev) => {
         if (s.environments !== prev.environments) useTabs.getState().syncWithWorkspace()
       })
-      autoCheckUpdates()
+      void autoCheckUpdates()
     })
 }
 
@@ -80,21 +83,28 @@ export function App() {
   const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeId) ?? null)
   const sidebarVisible = useLayout((s) => s.sidebarVisible)
   const consoleOpen = useConsole((s) => s.open)
+  // Langue appliquée avant le rendu des enfants ; l'arbre est remonté quand elle change.
+  const language = useSettings((s) => s.settings.general.language)
+  setLocale(language)
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
 
   useEffect(initWorkspace, [])
   useEffect(() => installKeyboardShortcuts(), [])
   useEffect(() => window.endora.onMenuAction(dispatch), [])
   useEffect(() => startMockEvents(), [])
+  useEffect(() => startUpdaterEvents(), [])
 
   return (
-    <div className="shell">
+    <div className="shell" key={language}>
       <TopBar />
       <div className={`app ${sidebarVisible ? '' : 'no-sidebar'}`}>
       {sidebarVisible && <Sidebar />}
       <main className={`workbench ${consoleOpen ? 'with-console' : ''}`}>
         <TabBar />
         {!loaded ? (
-          <div className="empty-workbench muted">Chargement…</div>
+          <div className="empty-workbench muted">{t('common.loading')}</div>
         ) : tab ? (
           <div className="tab-content" key={tab.id}>
             <TabContent tab={tab} />
@@ -102,20 +112,20 @@ export function App() {
         ) : (
           <div className="empty-workbench">
             <img src={logo} alt="Endora" />
-            <p>Aucun onglet ouvert.</p>
+            <p>{t('app.noTabs')}</p>
             <button className="primary" onClick={() => useTabs.getState().openNew()}>
-              Nouvelle requête
+              {t('app.newRequest')}
             </button>
           </div>
         )}
         {consoleOpen && <ConsolePanel />}
         <footer className="statusbar">
           <button className="ghost small" onClick={() => useLayout.getState().toggleSidebar()}>
-            {sidebarVisible ? 'Masquer la barre latérale' : 'Barre latérale'}
+            {sidebarVisible ? t('app.hideSidebar') : t('app.showSidebar')}
           </button>
           <span className="spacer" />
           <button className={`ghost small ${consoleOpen ? 'on' : ''}`} onClick={() => useConsole.getState().toggle()}>
-            Console
+            {t('app.console')}
           </button>
         </footer>
       </main>

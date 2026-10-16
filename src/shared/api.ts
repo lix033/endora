@@ -3,6 +3,7 @@
 import type { AuthConfig } from './auth'
 import type { ExecutionInput, ExecutionOutput } from './execution'
 import type { HttpRequestSpec, HttpResult } from './http'
+import type { UpdaterState } from './updates'
 import type { MockActionResult, MockEvent, MockLogEntry, MockPatch, MockState, NewMockInput } from './mock'
 import type { Environment, HistoryEntry, PersistedSession } from './model'
 import type { Settings } from './settings'
@@ -157,6 +158,13 @@ export interface EndoraApi {
   mockResetState(id: string): Promise<void>
   onMockEvent(listener: (event: MockEvent) => void): () => void
 
+  /** Mises à jour automatiques (application empaquetée) ; `unsupported` en développement. */
+  updaterState(): Promise<UpdaterState>
+  updaterCheck(): Promise<UpdaterState>
+  /** Télécharge si besoin puis redémarre sur la nouvelle version. */
+  updaterInstall(): Promise<void>
+  onUpdaterState(listener: (state: UpdaterState) => void): () => void
+
   onMenuAction(listener: (action: MenuAction) => void): () => void
 }
 
@@ -198,5 +206,9 @@ export const IPC = {
   mockLogs: 'mock:logs',
   mockClearLogs: 'mock:clear-logs',
   mockResetState: 'mock:reset-state',
-  mockEvent: 'mock:event'
+  mockEvent: 'mock:event',
+  updaterState: 'updater:state',
+  updaterCheck: 'updater:check',
+  updaterInstall: 'updater:install',
+  updaterEvent: 'updater:event'
 } as const

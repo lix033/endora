@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { effectiveAuth, type AuthConfig } from '@shared/auth'
 import { exportCollection } from '@shared/collection-v21'
+import { t } from '@shared/i18n'
 import { findItem, type Scripts } from '@shared/model'
 import { exportEnvironmentFile } from '@shared/variables'
 import { parentChain } from '../stores/context'
@@ -19,15 +20,15 @@ const fileName = (name: string, suffix: string) => `${name.replace(/[\\/:*?"<>|]
 
 export async function exportEnvironment(name: string, values: Parameters<typeof exportEnvironmentFile>[1], scope: 'environment' | 'globals', id: string) {
   const r = await window.endora.saveTextFile(fileName(name, scope === 'globals' ? 'globals' : 'environment'), JSON.stringify(exportEnvironmentFile(name, values, scope, id), null, 2))
-  if (r.ok) toast(`Exporté : ${r.path}`)
-  else if (!r.canceled) toast(`Export impossible : ${r.message}`, 'error')
+  if (r.ok) toast(t('entity.exported', { path: r.path }))
+  else if (!r.canceled) toast(t('entity.exportFailed', { message: r.message }), 'error')
 }
 
 function EditableTitle({ value, onRename }: { value: string; onRename: (v: string) => void }) {
   const [draft, setDraft] = useState<string | null>(null)
   if (draft === null) {
     return (
-      <h2 className="entity-title" title="Cliquer pour renommer" onClick={() => setDraft(value)}>
+      <h2 className="entity-title" title={t('entity.clickRename')} onClick={() => setDraft(value)}>
         {value}
       </h2>
     )
@@ -58,20 +59,20 @@ export function EnvironmentView({ tab }: { tab: Tab }) {
     return (
       <div className="entity">
         <header className="entity-head">
-          <h2 className="entity-title">Globales</h2>
-          <button onClick={() => void exportEnvironment('Globales', envs.globals, 'globals', 'globals')}>Exporter</button>
+          <h2 className="entity-title">{t('entity.globals')}</h2>
+          <button onClick={() => void exportEnvironment(t('entity.globals'), envs.globals, 'globals', 'globals')}>{t('entity.export')}</button>
         </header>
         <VariablesTable
           values={envs.globals}
           onChange={(v) => envs.setGlobals(v)}
-          hint="Les globales sont visibles depuis toutes les collections ; un environnement ou une collection peut les remplacer."
+          hint={t('entity.globalsHint')}
         />
       </div>
     )
   }
   if (view?.kind !== 'environment') return null
   const env = envs.environments.find((e) => e.id === view.environmentId)
-  if (!env) return <div className="entity muted">Environnement supprimé.</div>
+  if (!env) return <div className="entity muted">{t('entity.envDeleted')}</div>
   const active = envs.activeId === env.id
   return (
     <div className="entity">
@@ -79,15 +80,15 @@ export function EnvironmentView({ tab }: { tab: Tab }) {
         <EditableTitle value={env.name} onRename={(n) => envs.rename(env.id, n)} />
         <div className="row">
           <button className={active ? 'primary' : ''} onClick={() => envs.setActive(active ? null : env.id)}>
-            {active ? 'Environnement actif' : 'Activer'}
+            {active ? t('entity.envActive') : t('entity.activate')}
           </button>
-          <button onClick={() => void exportEnvironment(env.name, env.values, 'environment', env.id)}>Exporter</button>
+          <button onClick={() => void exportEnvironment(env.name, env.values, 'environment', env.id)}>{t('entity.export')}</button>
         </div>
       </header>
       <VariablesTable
         values={env.values}
         onChange={(v) => envs.setValues(env.id, v)}
-        hint="La valeur courante est utilisée à l’envoi et reste locale ; la valeur initiale est celle exportée. Les secrets sont masqués et chiffrés sur disque."
+        hint={t('entity.envHint')}
       />
     </div>
   )
@@ -115,43 +116,43 @@ export function CollectionView({ tab }: { tab: Tab }) {
         : undefined,
     [collections, view]
   )
-  if (!collection || (view?.kind === 'folder' && folder?.type !== 'folder')) return <div className="entity muted">Élément supprimé.</div>
+  if (!collection || (view?.kind === 'folder' && folder?.type !== 'folder')) return <div className="entity muted">{t('entity.deleted')}</div>
 
   const isFolder = view?.kind === 'folder' && folder?.type === 'folder'
   const target = isFolder ? folder : collection
-  const edit = (fn: (t: { auth: AuthConfig | null; scripts: Scripts; description?: string; name: string }) => void) => {
+  const edit = (fn: (x: { auth: AuthConfig | null; scripts: Scripts; description?: string; name: string }) => void) => {
     if (isFolder) ws.updateFolder(collection.id, folder.id, fn)
     else ws.updateCollection(collection.id, fn)
   }
   const requestCount = (items: typeof collection.items): number => items.reduce((n, i) => n + (i.type === 'request' ? 1 : requestCount(i.items)), 0)
 
   const sections: Array<[EntitySection, string]> = [
-    ['overview', 'Aperçu'],
-    ['auth', 'Autorisation'],
-    ['scripts', 'Scripts'],
-    ...(isFolder ? [] : ([['variables', 'Variables']] as Array<[EntitySection, string]>))
+    ['overview', t('entity.overview')],
+    ['auth', t('entity.authorization')],
+    ['scripts', t('entity.scripts')],
+    ...(isFolder ? [] : ([['variables', t('entity.variables')]] as Array<[EntitySection, string]>))
   ]
 
   return (
     <div className="entity">
       <header className="entity-head">
         <div>
-          <span className="muted small">{isFolder ? `Dossier · ${collection.name}` : 'Collection'}</span>
-          <EditableTitle value={target.name} onRename={(n) => edit((t) => void (t.name = n))} />
+          <span className="muted small">{isFolder ? t('entity.folderOf', { collection: collection.name }) : t('entity.collection')}</span>
+          <EditableTitle value={target.name} onRename={(n) => edit((x) => void (x.name = n))} />
         </div>
         <div className="row tight">
         <button className="primary" onClick={() => useTabs.getState().openView({ kind: 'runner', collectionId: collection.id, ...(isFolder ? { folderId: folder.id } : {}) })}>
-          Lancer
+          {t('entity.run')}
         </button>
         {!isFolder && (
           <button
             onClick={() =>
               void window.endora
                 .saveTextFile(fileName(collection.name, 'collection'), JSON.stringify(exportCollection(collection), null, 2))
-                .then((r) => (r.ok ? toast(`Collection exportée : ${r.path}`) : !r.canceled && toast(`Export impossible : ${r.message}`, 'error')))
+                .then((r) => (r.ok ? toast(t('tree.exported', { path: r.path })) : !r.canceled && toast(t('entity.exportFailed', { message: r.message }), 'error')))
             }
           >
-            Exporter (v2.1)
+            {t('entity.exportV21')}
           </button>
         )}
         </div>
@@ -169,16 +170,16 @@ export function CollectionView({ tab }: { tab: Tab }) {
       <div className="entity-body">
         {section === 'overview' && (
           <div className="overview">
-            <p className="muted small">{requestCount(isFolder ? folder.items : collection.items)} requête(s)</p>
+            <p className="muted small">{t('entity.requestCount', { count: requestCount(isFolder ? folder.items : collection.items) })}</p>
             <label className="field">
-              <span>Description</span>
+              <span>{t('entity.description')}</span>
               <textarea
                 className="description"
                 value={target.description ?? ''}
-                placeholder="Décrivez ce que contient cet élément (Markdown)."
+                placeholder={t('entity.descriptionPlaceholder')}
                 onChange={(e) =>
-                  edit((t) => {
-                    t.description = e.target.value || undefined
+                  edit((x) => {
+                    x.description = e.target.value || undefined
                   })
                 }
               />
@@ -188,9 +189,7 @@ export function CollectionView({ tab }: { tab: Tab }) {
         {section === 'auth' && (
           <>
             <p className="muted small">
-              {isFolder
-                ? 'Les requêtes de ce dossier qui héritent de leur parent utiliseront cette autorisation.'
-                : 'Les requêtes et dossiers qui héritent de leur parent utiliseront cette autorisation.'}
+              {isFolder ? t('entity.authFolderHint') : t('entity.authCollectionHint')}
             </p>
             <AuthEditor
               auth={target.auth}
@@ -198,8 +197,8 @@ export function CollectionView({ tab }: { tab: Tab }) {
               inherited={inherited}
               scopes={scopes}
               onChange={(auth) =>
-                edit((t) => {
-                  t.auth = auth
+                edit((x) => {
+                  x.auth = auth
                 })
               }
             />
@@ -208,15 +207,14 @@ export function CollectionView({ tab }: { tab: Tab }) {
         {section === 'scripts' && (
           <>
             <p className="muted small">
-              Exécutés pour chaque requête {isFolder ? 'du dossier' : 'de la collection'} : avant ceux de la requête pour « Avant la requête », avant ceux de la
-              requête également pour « Après la réponse ».
+              {isFolder ? t('entity.scriptsFolderHint') : t('entity.scriptsCollectionHint')}
             </p>
             <ScriptsEditor
               scripts={target.scripts}
               editorKey={target.id}
               onChange={(scripts) =>
-                edit((t) => {
-                  t.scripts = scripts
+                edit((x) => {
+                  x.scripts = scripts
                 })
               }
             />
@@ -230,7 +228,7 @@ export function CollectionView({ tab }: { tab: Tab }) {
                 c.variables = variables
               })
             }
-            hint="Variables propres à cette collection, prioritaires sur les globales ; l’environnement actif les remplace."
+            hint={t('entity.collectionVarsHint')}
           />
         )}
       </div>

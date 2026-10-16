@@ -1,3 +1,4 @@
+import { dateLocale, t } from '@shared/i18n'
 import { useState } from 'react'
 import { parseDataFile, type RunPlanItem, type RunRequestResult } from '@shared/runner'
 import { useEnvironments } from '../stores/environments'
@@ -13,7 +14,7 @@ export function RunnerView({ tab }: { tab: Tab }) {
   const runner = useRunner()
   if (view?.kind !== 'runner') return null
   const collection = collections.find((c) => c.id === view.collectionId)
-  if (!collection) return <div className="entity muted">Collection supprimée.</div>
+  if (!collection) return <div className="entity muted">{t('run.collectionDeleted')}</div>
   const key = runnerKey(view.collectionId, view.folderId)
   const shownId = runner.shown[key]
   const shown = shownId ? runner.runs.find((r) => r.id === shownId) : undefined
@@ -58,7 +59,7 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
     const file = r.files[0]!
     const parsed = parseDataFile(file.name, file.text)
     if (!parsed.ok) {
-      toast(`Fichier de données refusé : ${parsed.message}`, 'error')
+      toast(t('run.dataRejected', { message: parsed.message }), 'error')
       return
     }
     // Comme dans la référence : le nombre d'itérations suit le nombre de lignes du fichier.
@@ -72,23 +73,23 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
       <section className="runner-order">
         <header className="runner-head">
           <div>
-            <span className="muted small">Collection Runner</span>
-            <h2 className="entity-title">{folderId ? `${title} › ${config.plan[0]?.path.at(-1) ?? 'Dossier'}` : title}</h2>
+            <span className="muted small">{t('run.title')}</span>
+            <h2 className="entity-title">{folderId ? `${title} › ${config.plan[0]?.path.at(-1) ?? t('run.folder')}` : title}</h2>
           </div>
           <div className="row tight">
             <button className="ghost small" onClick={() => setPlan(config.plan.map((p) => ({ ...p, enabled: true })))}>
-              Tout cocher
+              {t('run.checkAll')}
             </button>
             <button className="ghost small" onClick={() => setPlan(config.plan.map((p) => ({ ...p, enabled: false })))}>
-              Tout décocher
+              {t('run.uncheckAll')}
             </button>
-            <button className="ghost small" onClick={() => runner.update(key, { plan: [] })} title="Rétablir l’ordre de la collection">
-              Ordre initial
+            <button className="ghost small" onClick={() => runner.update(key, { plan: [] })} title={t('run.resetOrderTitle')}>
+              {t('run.resetOrder')}
             </button>
           </div>
         </header>
-        <p className="muted small">Ordre d’exécution : glissez les requêtes pour les réordonner, décochez celles à ignorer.</p>
-        {config.plan.length === 0 && <p className="muted">Aucune requête dans {folderId ? 'ce dossier' : 'cette collection'}.</p>}
+        <p className="muted small">{t('run.orderHint')}</p>
+        {config.plan.length === 0 && <p className="muted">{folderId ? t('run.noRequestsFolder') : t('run.noRequestsCollection')}</p>}
         <ol className="run-plan">
           {config.plan.map((p) => (
             <li
@@ -120,15 +121,15 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
       </section>
 
       <aside className="runner-options">
-        <h3>Exécution</h3>
+        <h3>{t('run.runSettings')}</h3>
         <label className="field">
-          <span>Environnement</span>
+          <span>{t('run.environment')}</span>
           <select
             value={config.environmentId === undefined ? '__active__' : (config.environmentId ?? '')}
             onChange={(e) => runner.update(key, { environmentId: e.target.value === '__active__' ? undefined : e.target.value || null })}
           >
-            <option value="__active__">Environnement actif ({environments.find((e) => e.id === activeId)?.name ?? 'aucun'})</option>
-            <option value="">Aucun environnement</option>
+            <option value="__active__">{t('run.activeEnv', { name: environments.find((e) => e.id === activeId)?.name ?? t('run.activeEnvNone') })}</option>
+            <option value="">{t('run.noEnv')}</option>
             {environments.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name}
@@ -138,26 +139,26 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
         </label>
         <div className="row two">
           <label className="field">
-            <span>Itérations</span>
+            <span>{t('run.iterations')}</span>
             <input type="number" min={1} max={10000} value={o.iterations} onChange={(e) => runner.updateOptions(key, { iterations: Math.max(1, Number(e.target.value) || 1) })} />
           </label>
           <label className="field">
-            <span>Délai (ms)</span>
+            <span>{t('run.delay')}</span>
             <input type="number" min={0} step={100} value={o.delayMs} onChange={(e) => runner.updateOptions(key, { delayMs: Math.max(0, Number(e.target.value) || 0) })} />
           </label>
         </div>
         <div className="field">
-          <span>Données (CSV ou JSON)</span>
+          <span>{t('run.data')}</span>
           {o.data ? (
             <div className="data-file">
               <div className="row space-between">
                 <span className="mono">{o.data.fileName}</span>
                 <button className="ghost small" onClick={() => runner.updateOptions(key, { data: null })}>
-                  Retirer
+                  {t('run.remove')}
                 </button>
               </div>
               <span className="muted small">
-                {o.data.rows.length} ligne(s) · variables : {columns.map((c) => `{{${c}}}`).join(', ') || '—'}
+                {t('run.dataRows', { count: o.data.rows.length, vars: columns.map((c) => `{{${c}}}`).join(', ') || '—' })}
               </span>
               {o.data.rows.length > 0 && (
                 <table className="data-preview">
@@ -181,37 +182,37 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
               )}
             </div>
           ) : (
-            <button onClick={() => void pickData()}>Choisir un fichier…</button>
+            <button onClick={() => void pickData()}>{t('run.selectFile')}</button>
           )}
         </div>
         <label className="check">
           <input type="checkbox" checked={o.persistVariables} onChange={(e) => runner.updateOptions(key, { persistVariables: e.target.checked })} />
-          Conserver les valeurs des variables
+          {t('run.persistVars')}
         </label>
-        <p className="muted small indent">Les variables modifiées par les scripts sont enregistrées dans l’environnement, la collection et les globales.</p>
+        <p className="muted small indent">{t('run.persistHint')}</p>
         <label className="check">
           <input type="checkbox" checked={o.saveResponses} onChange={(e) => runner.updateOptions(key, { saveResponses: e.target.checked })} />
-          Enregistrer les réponses
+          {t('run.saveResponses')}
         </label>
         <label className="check">
           <input type="checkbox" checked={o.stopOnError} onChange={(e) => runner.updateOptions(key, { stopOnError: e.target.checked })} />
-          Arrêter à la première erreur
+          {t('run.stopOnError')}
         </label>
         <button className="primary wide" disabled={enabledCount === 0} onClick={() => void runner.start(collectionId, folderId)}>
-          Lancer {enabledCount} requête{enabledCount > 1 ? 's' : ''}
+          {t('run.start', { count: enabledCount })}
           {o.iterations > 1 ? ` × ${o.iterations}` : ''}
         </button>
 
         {previous.length > 0 && (
           <>
-            <h3>Exécutions précédentes</h3>
+            <h3>{t('run.previous')}</h3>
             <ul className="run-history">
               {previous.map((r) => (
                 <li key={r.id}>
                   <button className="link" onClick={() => runner.show(key, r.id)}>
-                    {new Date(r.startedAt).toLocaleTimeString('fr-FR')}
+                    {new Date(r.startedAt).toLocaleTimeString(dateLocale())}
                   </button>
-                  <span className={`run-status ${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                  <span className={`run-status ${r.status}`}>{statusLabel(r.status)}</span>
                   {r.summary && (
                     <span className="muted small">
                       {r.summary.testsPassed} ✓ · {r.summary.testsFailed} ✗
@@ -229,7 +230,7 @@ function RunConfig({ collectionId, folderId }: { collectionId: string; folderId?
 
 // --- Résultats -----------------------------------------------------------------------------------
 
-const STATUS_LABEL: Record<RunRecord['status'], string> = { running: 'En cours', done: 'Terminée', stopped: 'Arrêtée', error: 'Interrompue' }
+const statusLabel = (status: RunRecord['status']): string => t(`run.status.${status}`)
 
 type Filter = 'all' | 'passed' | 'failed'
 
@@ -246,8 +247,8 @@ function decode(b64: string): string {
 function ResultRow({ r }: { r: RunRequestResult }) {
   const [open, setOpen] = useState(false)
   const statusClass = r.error ? 'fail' : (r.status ?? 0) < 300 ? 'ok' : (r.status ?? 0) < 400 ? 'redirect' : 'fail'
-  const passed = r.tests.filter((t) => t.passed && !t.skipped).length
-  const counted = r.tests.filter((t) => !t.skipped).length
+  const passed = r.tests.filter((x) => x.passed && !x.skipped).length
+  const counted = r.tests.filter((x) => !x.skipped).length
   return (
     <li className={`run-result ${resultFailed(r) ? 'failed' : ''}`}>
       <button className="ghost run-result-line" onClick={() => setOpen(!open)}>
@@ -256,9 +257,9 @@ function ResultRow({ r }: { r: RunRequestResult }) {
         <span className="run-result-name">{r.name}</span>
         <span className="mono muted small run-result-url">{r.url}</span>
         {r.skipped ? (
-          <span className="muted small">ignorée</span>
+          <span className="muted small">{t('run.skipped')}</span>
         ) : (
-          <span className={`status ${statusClass}`}>{r.error ? 'Erreur' : r.status}</span>
+          <span className={`status ${statusClass}`}>{r.error ? t('run.error') : r.status}</span>
         )}
         {r.timeMs !== undefined && <span className="muted small">{r.timeMs} ms</span>}
         {counted > 0 && <span className={`test-count ${passed < counted ? 'fail' : 'pass'}`}>{passed}/{counted}</span>}
@@ -268,23 +269,23 @@ function ResultRow({ r }: { r: RunRequestResult }) {
           {r.error && <p className="error-text">{r.error}</p>}
           {r.scriptError && (
             <p className="error-text">
-              Erreur de script ({r.scriptError.phase === 'prerequest' ? 'avant la requête' : 'après la réponse'}, {r.scriptError.source}) :{' '}
+              {t('run.scriptError', { phase: r.scriptError.phase, source: r.scriptError.source })}{' '}
               <span className="mono">{r.scriptError.message}</span>
             </p>
           )}
-          {r.tests.length === 0 && !r.error && !r.scriptError && <p className="muted small">Aucun test.</p>}
+          {r.tests.length === 0 && !r.error && !r.scriptError && <p className="muted small">{t('run.noTests')}</p>}
           <ul className="tests-list">
-            {r.tests.map((t, i) => (
+            {r.tests.map((x, i) => (
               <li key={i}>
-                <span className={`test-badge ${t.skipped ? 'skipped' : t.passed ? 'pass' : 'fail'}`}>{t.skipped ? 'IGNORÉ' : t.passed ? 'RÉUSSI' : 'ÉCHEC'}</span>
-                <span>{t.name}</span>
-                {t.error && <span className="test-msg mono">{t.error}</span>}
+                <span className={`test-badge ${x.skipped ? 'skipped' : x.passed ? 'pass' : 'fail'}`}>{x.skipped ? t('tests.badgeSkipped') : x.passed ? t('tests.badgePass') : t('tests.badgeFail')}</span>
+                <span>{x.name}</span>
+                {x.error && <span className="test-msg mono">{x.error}</span>}
               </li>
             ))}
           </ul>
           {r.response && (
             <details>
-              <summary className="muted small">Réponse ({r.response.contentType ?? 'inconnu'})</summary>
+              <summary className="muted small">{t('run.response', { type: r.response.contentType ?? t('run.unknownType') })}</summary>
               <pre className="run-body">{decode(r.response.bodyBase64).slice(0, 20000)}</pre>
             </details>
           )}
@@ -298,8 +299,8 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
   const [filter, setFilter] = useState<Filter>('all')
   const stop = useRunner((s) => s.stop)
   const tests = run.results.flatMap((r) => r.tests)
-  const passed = tests.filter((t) => t.passed && !t.skipped).length
-  const failed = tests.filter((t) => !t.passed).length
+  const passed = tests.filter((x) => x.passed && !x.skipped).length
+  const failed = tests.filter((x) => !x.passed).length
   const running = run.status === 'running'
   const elapsed = (run.finishedAt ?? Date.now()) - run.startedAt
   const visible = run.results.filter((r) => (filter === 'all' ? true : filter === 'failed' ? resultFailed(r) : !resultFailed(r)))
@@ -311,25 +312,25 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
       <header className="runner-head">
         <div>
           <span className="muted small">
-            Exécution du {new Date(run.startedAt).toLocaleString('fr-FR')}
-            {run.environmentName ? ` · environnement « ${run.environmentName} »` : ''}
-            {run.dataFile ? ` · données ${run.dataFile}` : ''}
+            {t('run.startedAt', { date: new Date(run.startedAt).toLocaleString(dateLocale()) })}
+            {run.environmentName ? t('run.envSuffix', { name: run.environmentName }) : ''}
+            {run.dataFile ? t('run.dataSuffix', { file: run.dataFile }) : ''}
           </span>
           <h2 className="entity-title">
-            {run.title} <span className={`run-status ${run.status}`}>{STATUS_LABEL[run.status]}</span>
+            {run.title} <span className={`run-status ${run.status}`}>{statusLabel(run.status)}</span>
           </h2>
         </div>
         <div className="row tight">
           {running ? (
             <button className="danger" onClick={() => stop(run.id)}>
-              Arrêter
+              {t('run.stop')}
             </button>
           ) : (
             <>
-              <button onClick={onBack}>Configurer</button>
-              <button onClick={() => void exportRun(run)}>Exporter</button>
+              <button onClick={onBack}>{t('run.configure')}</button>
+              <button onClick={() => void exportRun(run)}>{t('run.export')}</button>
               <button className="primary" onClick={onRerun}>
-                Relancer
+                {t('run.rerun')}
               </button>
             </>
           )}
@@ -339,27 +340,27 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
       <div className="run-summary">
         <div>
           <span className="big">{run.status === 'done' ? run.iterations : `${run.iteration + 1}/${run.iterations}`}</span>
-          <span className="muted small">itération{run.iterations > 1 ? 's' : ''}</span>
+          <span className="muted small">{t('run.iterationsLabel', { count: run.iterations })}</span>
         </div>
         <div>
           <span className="big">{run.results.length}</span>
-          <span className="muted small">requêtes</span>
+          <span className="muted small">{t('run.requests')}</span>
         </div>
         <div>
           <span className="big ok-text">{passed}</span>
-          <span className="muted small">tests réussis</span>
+          <span className="muted small">{t('run.testsPassed')}</span>
         </div>
         <div>
           <span className={`big ${failed > 0 ? 'error-text' : ''}`}>{failed}</span>
-          <span className="muted small">tests échoués</span>
+          <span className="muted small">{t('run.testsFailed')}</span>
         </div>
         <div>
           <span className="big">{run.summary?.avgResponseMs ?? '—'}</span>
-          <span className="muted small">ms en moyenne</span>
+          <span className="muted small">{t('run.avgMs')}</span>
         </div>
         <div>
           <span className="big">{(elapsed / 1000).toFixed(1)}</span>
-          <span className="muted small">secondes</span>
+          <span className="muted small">{t('run.seconds')}</span>
         </div>
       </div>
       {running && <div className="run-progress" aria-hidden />}
@@ -368,14 +369,14 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
       <nav className="tests-filter">
         {(['all', 'passed', 'failed'] as const).map((f) => (
           <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
-            {{ all: 'Tout', passed: 'Réussi', failed: 'Échoué' }[f]}
+            {{ all: t('run.filterAll'), passed: t('run.filterPassed'), failed: t('run.filterFailed') }[f]}
           </button>
         ))}
       </nav>
       <div className="run-list">
         {[...byIteration].map(([iteration, results]) => (
           <section key={iteration}>
-            <div className="history-day">Itération {iteration + 1}</div>
+            <div className="history-day">{t('run.iteration', { n: iteration + 1 })}</div>
             <ul>
               {results.map((r) => (
                 <ResultRow key={r.id} r={r} />
@@ -383,7 +384,7 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
             </ul>
           </section>
         ))}
-        {visible.length === 0 && <p className="muted small pad">{running ? 'Exécution en cours…' : 'Aucun résultat pour ce filtre.'}</p>}
+        {visible.length === 0 && <p className="muted small pad">{running ? t('run.inProgress') : t('run.noResults')}</p>}
       </div>
     </div>
   )

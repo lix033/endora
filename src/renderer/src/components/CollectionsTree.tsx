@@ -1,6 +1,7 @@
 import { useMemo, type DragEvent, type MouseEvent, type ReactNode } from 'react'
 import { create } from 'zustand'
 import { exportCollection } from '@shared/collection-v21'
+import { t, type MessageKey } from '@shared/i18n'
 import { emptyDraft, isLoose, type Collection, type TreeItem } from '@shared/model'
 import { useTabs } from '../stores/tabs'
 import { confirmDialog, openImportDialog, toast } from '../stores/ui'
@@ -50,7 +51,7 @@ function matches(item: TreeItem, filter: string): boolean {
 
 /** Ajoute une requête vide, l'ouvre dans un onglet et passe en renommage. */
 function addRequest(collectionId: string, parentId: string | null): void {
-  const id = useWorkspace.getState().addRequest(collectionId, parentId, 'Nouvelle requête', emptyDraft())
+  const id = useWorkspace.getState().addRequest(collectionId, parentId, t('tree.newRequest'), emptyDraft())
   if (!id) return
   useTreeUi.getState().expand(collectionId, ...(parentId ? [parentId] : []))
   useTabs.getState().openItem(collectionId, id, { preview: false })
@@ -58,7 +59,7 @@ function addRequest(collectionId: string, parentId: string | null): void {
 }
 
 function addFolder(collectionId: string, parentId: string | null): void {
-  const id = useWorkspace.getState().addFolder(collectionId, parentId)
+  const id = useWorkspace.getState().addFolder(collectionId, parentId, t('tree.newFolder'))
   if (!id) return
   useTreeUi.getState().expand(collectionId, ...(parentId ? [parentId] : []))
   useTreeUi.getState().setRenaming(id)
@@ -66,14 +67,14 @@ function addFolder(collectionId: string, parentId: string | null): void {
 
 async function exportToFile(c: Collection): Promise<void> {
   const r = await window.endora.saveTextFile(fileName(c.name), JSON.stringify(exportCollection(c), null, 2))
-  if (r.ok) toast(`Collection exportée : ${r.path}`)
-  else if (!r.canceled) toast(`Export impossible : ${r.message}`, 'error')
+  if (r.ok) toast(t('tree.exported', { path: r.path }))
+  else if (!r.canceled) toast(t('tree.exportFailed', { message: r.message }), 'error')
 }
 
-async function confirmDelete(kind: string, name: string): Promise<boolean> {
-  const choice = await confirmDialog(`Supprimer ${kind}`, `« ${name} » sera supprimé définitivement.`, [
-    { label: 'Annuler', value: 'cancel' },
-    { label: 'Supprimer', value: 'delete', variant: 'danger' }
+async function confirmDelete(title: MessageKey, name: string): Promise<boolean> {
+  const choice = await confirmDialog(t(title), t('common.deleteForever', { name }), [
+    { label: t('common.cancel'), value: 'cancel' },
+    { label: t('common.delete'), value: 'delete', variant: 'danger' }
   ])
   return choice === 'delete'
 }
@@ -128,31 +129,31 @@ function ItemNode({ item, collectionId, parentId, depth, filter }: { item: TreeI
       e,
       isFolder
         ? [
-            { label: 'Ouvrir (auth, scripts)', onSelect: () => tabs.openView({ kind: 'folder', collectionId, folderId: item.id }) },
-            { label: 'Lancer le dossier', onSelect: () => openRunner(collectionId, item.id) },
+            { label: t('tree.openFolder'), onSelect: () => tabs.openView({ kind: 'folder', collectionId, folderId: item.id }) },
+            { label: t('tree.runFolder'), onSelect: () => openRunner(collectionId, item.id) },
             'separator',
-            { label: 'Ajouter une requête', onSelect: () => addRequest(collectionId, item.id) },
-            { label: 'Ajouter un dossier', onSelect: () => addFolder(collectionId, item.id) },
+            { label: t('tree.addRequest'), onSelect: () => addRequest(collectionId, item.id) },
+            { label: t('tree.addFolder'), onSelect: () => addFolder(collectionId, item.id) },
             'separator',
-            { label: 'Renommer', onSelect: () => setRenaming(item.id) },
-            { label: 'Dupliquer', onSelect: () => ws.duplicateItem(collectionId, item.id) },
+            { label: t('common.rename'), onSelect: () => setRenaming(item.id) },
+            { label: t('common.duplicate'), onSelect: () => ws.duplicateItem(collectionId, item.id) },
             'separator',
             {
-              label: 'Supprimer',
+              label: t('common.delete'),
               danger: true,
-              onSelect: () => void confirmDelete('le dossier', item.name).then((ok) => ok && ws.deleteItem(collectionId, item.id))
+              onSelect: () => void confirmDelete('tree.deleteFolder', item.name).then((ok) => ok && ws.deleteItem(collectionId, item.id))
             }
           ]
         : [
-            { label: 'Ouvrir dans un onglet', onSelect: () => tabs.openItem(collectionId, item.id, { preview: false }) },
-            { label: 'Renommer', onSelect: () => setRenaming(item.id) },
-            { label: 'Dupliquer', onSelect: () => ws.duplicateItem(collectionId, item.id) },
-            { label: 'Copier en cURL', onSelect: () => void copyAsCurl(item.request) },
+            { label: t('tree.openInTab'), onSelect: () => tabs.openItem(collectionId, item.id, { preview: false }) },
+            { label: t('common.rename'), onSelect: () => setRenaming(item.id) },
+            { label: t('common.duplicate'), onSelect: () => ws.duplicateItem(collectionId, item.id) },
+            { label: t('tree.copyCurl'), onSelect: () => void copyAsCurl(item.request) },
             'separator',
             {
-              label: 'Supprimer',
+              label: t('common.delete'),
               danger: true,
-              onSelect: () => void confirmDelete('la requête', item.name).then((ok) => ok && ws.deleteItem(collectionId, item.id))
+              onSelect: () => void confirmDelete('tree.deleteRequest', item.name).then((ok) => ok && ws.deleteItem(collectionId, item.id))
             }
           ]
     )
@@ -187,7 +188,7 @@ function ItemNode({ item, collectionId, parentId, depth, filter }: { item: TreeI
         ) : (
           <span className="tree-name">{item.name}</span>
         )}
-        <button className="ghost row-menu" aria-label="Actions" onClick={menu}>
+        <button className="ghost row-menu" aria-label={t('common.actions')} onClick={menu}>
           ⋯
         </button>
       </div>
@@ -195,7 +196,7 @@ function ItemNode({ item, collectionId, parentId, depth, filter }: { item: TreeI
         item.items.map((child) => <ItemNode key={child.id} item={child} collectionId={collectionId} parentId={item.id} depth={depth + 1} filter={filter} />)}
       {open && item.items.length === 0 && (
         <div className="tree-empty" style={{ paddingLeft: 22 + (depth + 1) * 14 }}>
-          Dossier vide
+          {t('tree.emptyFolder')}
         </div>
       )}
     </>
@@ -212,20 +213,20 @@ function CollectionNode({ c, filter }: { c: Collection; filter: string }) {
 
   const menu = (e: MouseEvent) =>
     openMenu(e, [
-      { label: 'Ouvrir (auth, scripts, variables)', onSelect: () => useTabs.getState().openView({ kind: 'collection', collectionId: c.id }) },
-      { label: 'Lancer la collection', onSelect: () => openRunner(c.id) },
+      { label: t('tree.openCollection'), onSelect: () => useTabs.getState().openView({ kind: 'collection', collectionId: c.id }) },
+      { label: t('tree.runCollection'), onSelect: () => openRunner(c.id) },
       'separator',
-      { label: 'Ajouter une requête', onSelect: () => addRequest(c.id, null) },
-      { label: 'Ajouter un dossier', onSelect: () => addFolder(c.id, null) },
+      { label: t('tree.addRequest'), onSelect: () => addRequest(c.id, null) },
+      { label: t('tree.addFolder'), onSelect: () => addFolder(c.id, null) },
       'separator',
-      { label: 'Renommer', onSelect: () => setRenaming(c.id) },
-      { label: 'Dupliquer', onSelect: () => ws.duplicateCollection(c.id) },
-      { label: 'Exporter (v2.1)…', onSelect: () => void exportToFile(c) },
+      { label: t('common.rename'), onSelect: () => setRenaming(c.id) },
+      { label: t('common.duplicate'), onSelect: () => ws.duplicateCollection(c.id) },
+      { label: t('tree.exportV21'), onSelect: () => void exportToFile(c) },
       'separator',
       {
-        label: 'Supprimer',
+        label: t('common.delete'),
         danger: true,
-        onSelect: () => void confirmDelete('la collection', c.name).then((ok) => ok && ws.deleteCollection(c.id))
+        onSelect: () => void confirmDelete('tree.deleteCollection', c.name).then((ok) => ok && ws.deleteCollection(c.id))
       }
     ])
 
@@ -250,7 +251,7 @@ function CollectionNode({ c, filter }: { c: Collection; filter: string }) {
         ) : (
           <span className="tree-name">{c.name}</span>
         )}
-        <button className="ghost row-menu" aria-label="Actions" onClick={menu}>
+        <button className="ghost row-menu" aria-label={t('common.actions')} onClick={menu}>
           ⋯
         </button>
       </div>
@@ -258,9 +259,9 @@ function CollectionNode({ c, filter }: { c: Collection; filter: string }) {
         c.items.map((item) => <ItemNode key={item.id} item={item} collectionId={c.id} parentId={null} depth={1} filter={childFilter} />)}
       {open && c.items.length === 0 && (
         <div className="tree-empty" style={{ paddingLeft: 36 }}>
-          Collection vide.{' '}
+          {t('tree.emptyCollection')}{' '}
           <button className="link" onClick={() => addRequest(c.id, null)}>
-            Ajouter une requête
+            {t('tree.addRequest')}
           </button>
         </div>
       )}
@@ -283,17 +284,17 @@ function LooseSection({ filter }: { filter: string }) {
         onClick={() => toggle('loose-collapsed')}
         onContextMenu={(e) =>
           openMenu(e, [
-            { label: 'Nouvelle requête', onSelect: () => newLooseRequest() },
-            { label: 'Lancer toutes les requêtes', onSelect: () => loose && openRunner(loose.id), disabled: items.length === 0 }
+            { label: t('tree.looseNew'), onSelect: () => newLooseRequest() },
+            { label: t('tree.looseRunAll'), onSelect: () => loose && openRunner(loose.id), disabled: items.length === 0 }
           ])
         }
       >
         <span className={`chevron ${open ? 'open' : ''}`}>›</span>
-        <span className="tree-name">Requêtes libres</span>
+        <span className="tree-name">{t('tree.looseRequests')}</span>
         <button
           className="ghost row-menu always"
-          title="Nouvelle requête sans collection"
-          aria-label="Nouvelle requête sans collection"
+          title={t('tree.looseNewTitle')}
+          aria-label={t('tree.looseNewTitle')}
           onClick={(e) => {
             e.stopPropagation()
             newLooseRequest()
@@ -306,7 +307,7 @@ function LooseSection({ filter }: { filter: string }) {
       {open && items.length === 0 && (
         <div className="tree-empty" style={{ paddingLeft: 36 }}>
           <button className="link" onClick={() => newLooseRequest()}>
-            + Créer une requête sans collection
+            {t('tree.looseCreate')}
           </button>
         </div>
       )}
@@ -335,11 +336,11 @@ export function CollectionsTree({ filter }: { filter: string }) {
   if (collections.length === 0) {
     body = (
       <div className="sidebar-empty">
-        <p>Aucune collection.</p>
-        <p className="muted small">Regroupez vos requêtes dans des collections, ou importez un fichier de collection v2.1.</p>
+        <p>{t('tree.noCollections')}</p>
+        <p className="muted small">{t('tree.noCollectionsHint')}</p>
         <div className="row">
-          <button onClick={() => newCollection()}>Créer une collection</button>
-          <button onClick={() => openImportDialog()}>Importer</button>
+          <button onClick={() => newCollection()}>{t('tree.createCollection')}</button>
+          <button onClick={() => openImportDialog()}>{t('common.import')}</button>
         </div>
       </div>
     )
@@ -349,14 +350,14 @@ export function CollectionsTree({ filter }: { filter: string }) {
   return (
     <div className="tree">
       <LooseSection filter={f} />
-      <div className="history-day">Collections</div>
+      <div className="history-day">{t('sidebar.collections')}</div>
       {body}
     </div>
   )
 }
 
 export function newCollection(): void {
-  const c = useWorkspace.getState().createCollection()
+  const c = useWorkspace.getState().createCollection(t('tree.newCollection'))
   useTreeUi.getState().expand(c.id)
   useTreeUi.getState().setRenaming(c.id)
 }

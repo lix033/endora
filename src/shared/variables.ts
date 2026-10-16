@@ -8,6 +8,7 @@
 //   `_postman_variable_scope: "globals"` ;
 // - inféré (documentation publique) : priorité locale > données > environnement > collection > globales.
 
+import { t, type MessageKey } from './i18n'
 import { newId } from './model'
 import type { VariableMutation } from './scripting/types'
 
@@ -45,13 +46,7 @@ export interface ResolvedVariable {
 
 export const SCOPE_ORDER: ScopeName[] = ['local', 'data', 'environment', 'collection', 'globals']
 
-export const SCOPE_LABELS: Record<ScopeName, string> = {
-  local: 'Locale',
-  data: 'Données',
-  environment: 'Environnement',
-  collection: 'Collection',
-  globals: 'Globale'
-}
+export const scopeLabel = (scope: ScopeName): string => t(`scope.${scope}`)
 
 export const newVariable = (key = '', value = '', type: VariableType = 'default'): Variable => ({
   id: newId(),
@@ -93,26 +88,26 @@ const FIRST_NAMES = ['Alice', 'Bruno', 'Chloé', 'David', 'Emma', 'Farid', 'Gabr
 const LAST_NAMES = ['Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Richard', 'Petit', 'Durand', 'Leroy', 'Moreau']
 const WORDS = ['lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur', 'adipiscing', 'elit', 'sed', 'tempor']
 
-export const DYNAMIC_VARIABLES: Record<string, { description: string; generate: () => string }> = {
-  $guid: { description: 'UUID v4', generate: () => crypto.randomUUID() },
-  $randomUUID: { description: 'UUID v4', generate: () => crypto.randomUUID() },
-  $timestamp: { description: 'Horodatage Unix (secondes)', generate: () => String(Math.floor(Date.now() / 1000)) },
-  $isoTimestamp: { description: 'Horodatage ISO 8601 (UTC)', generate: () => new Date().toISOString() },
-  $randomInt: { description: 'Entier entre 0 et 1000', generate: () => String(randomInt(0, 1000)) },
-  $randomBoolean: { description: 'true ou false', generate: () => String(Math.random() < 0.5) },
-  $randomAlphaNumeric: { description: 'Caractère alphanumérique', generate: () => pick([...ALPHANUM]) },
-  $randomHexColor: { description: 'Couleur hexadécimale', generate: () => `#${randomInt(0, 0xffffff).toString(16).padStart(6, '0')}` },
-  $randomIP: { description: 'Adresse IPv4', generate: () => [0, 0, 0, 0].map(() => randomInt(1, 254)).join('.') },
-  $randomFirstName: { description: 'Prénom', generate: () => pick(FIRST_NAMES) },
-  $randomLastName: { description: 'Nom', generate: () => pick(LAST_NAMES) },
-  $randomFullName: { description: 'Nom complet', generate: () => `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}` },
+export const DYNAMIC_VARIABLES: Record<string, { description: MessageKey; generate: () => string }> = {
+  $guid: { description: 'dyn.uuid', generate: () => crypto.randomUUID() },
+  $randomUUID: { description: 'dyn.uuid', generate: () => crypto.randomUUID() },
+  $timestamp: { description: 'dyn.timestamp', generate: () => String(Math.floor(Date.now() / 1000)) },
+  $isoTimestamp: { description: 'dyn.isoTimestamp', generate: () => new Date().toISOString() },
+  $randomInt: { description: 'dyn.randomInt', generate: () => String(randomInt(0, 1000)) },
+  $randomBoolean: { description: 'dyn.randomBoolean', generate: () => String(Math.random() < 0.5) },
+  $randomAlphaNumeric: { description: 'dyn.randomAlphaNumeric', generate: () => pick([...ALPHANUM]) },
+  $randomHexColor: { description: 'dyn.randomHexColor', generate: () => `#${randomInt(0, 0xffffff).toString(16).padStart(6, '0')}` },
+  $randomIP: { description: 'dyn.randomIP', generate: () => [0, 0, 0, 0].map(() => randomInt(1, 254)).join('.') },
+  $randomFirstName: { description: 'dyn.randomFirstName', generate: () => pick(FIRST_NAMES) },
+  $randomLastName: { description: 'dyn.randomLastName', generate: () => pick(LAST_NAMES) },
+  $randomFullName: { description: 'dyn.randomFullName', generate: () => `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}` },
   $randomEmail: {
-    description: 'Adresse e-mail',
+    description: 'dyn.randomEmail',
     generate: () => `${pick(FIRST_NAMES).toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')}.${pick(LAST_NAMES).toLowerCase()}@example.com`
   },
-  $randomWord: { description: 'Mot', generate: () => pick(WORDS) },
+  $randomWord: { description: 'dyn.randomWord', generate: () => pick(WORDS) },
   $randomLoremSentence: {
-    description: 'Phrase',
+    description: 'dyn.randomLoremSentence',
     generate: () => {
       const s = Array.from({ length: randomInt(5, 10) }, () => pick(WORDS)).join(' ')
       return `${s[0]!.toUpperCase()}${s.slice(1)}.`

@@ -7,6 +7,7 @@ import { BrowserWindow, session } from 'electron'
 import { authString, type AuthConfig } from '@shared/auth'
 import type { OAuth2TokenResult } from '@shared/api'
 import { executeHttp } from './http'
+import { t } from '@shared/i18n'
 
 export const base64url = (b: Buffer): string => b.toString('base64url')
 
@@ -49,14 +50,14 @@ export function parseRedirect(target: string, redirectUri: string): RedirectOutc
   if (params.get('access_token')) return { kind: 'token', params }
   const code = params.get('code')
   if (code) return { kind: 'code', code, state: params.get('state') }
-  return { kind: 'error', message: 'La redirection ne contient ni code ni jeton.' }
+  return { kind: 'error', message: t('oauth.noCode') }
 }
 
 function tokenFromParams(params: Record<string, unknown>): OAuth2TokenResult {
   const accessToken = params['access_token']
   if (typeof accessToken !== 'string' || accessToken === '') {
     const err = params['error']
-    return { ok: false, message: typeof err === 'string' ? `${err}${params['error_description'] ? ` : ${String(params['error_description'])}` : ''}` : 'Réponse sans access_token.' }
+    return { ok: false, message: typeof err === 'string' ? `${err}${params['error_description'] ? ` : ${String(params['error_description'])}` : ''}` : t('oauth.noToken') }
   }
   return {
     ok: true,
@@ -71,7 +72,7 @@ function tokenFromParams(params: Record<string, unknown>): OAuth2TokenResult {
 /** Échange au point de terminaison du jeton (code, mot de passe, identifiants client). */
 export async function requestToken(auth: AuthConfig, form: Record<string, string>): Promise<OAuth2TokenResult> {
   const tokenUrl = authString(auth, 'accessTokenUrl')
-  if (!tokenUrl) return { ok: false, message: 'URL du jeton manquante.' }
+  if (!tokenUrl) return { ok: false, message: t('oauth.noTokenUrl') }
   const clientId = authString(auth, 'clientId')
   const clientSecret = authString(auth, 'clientSecret')
   const headers = [
@@ -100,7 +101,7 @@ export async function requestToken(auth: AuthConfig, form: Record<string, string
   } catch {
     params = Object.fromEntries(new URLSearchParams(text))
   }
-  if (res.status >= 400 && !params['error']) return { ok: false, message: `Le serveur a répondu ${res.status}.` }
+  if (res.status >= 400 && !params['error']) return { ok: false, message: t('oauth.status', { status: res.status }) }
   return tokenFromParams(params)
 }
 
@@ -132,13 +133,13 @@ function authorize(auth: AuthConfig, parent: BrowserWindow | null): Promise<Redi
       const outcome = parseRedirect(target, redirectUri)
       if (!outcome) return
       event.preventDefault()
-      if (outcome.kind === 'code' && outcome.state !== state) finish({ kind: 'error', message: 'Paramètre state inattendu dans la redirection.' })
+      if (outcome.kind === 'code' && outcome.state !== state) finish({ kind: 'error', message: t('oauth.badState') })
       else finish(outcome)
     }
     win.webContents.on('will-redirect', (e, target) => inspect(e, target))
     win.webContents.on('will-navigate', (e, target) => inspect(e, target))
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    win.on('closed', () => finish({ kind: 'error', message: 'Fenêtre d’autorisation fermée.' }))
+    win.on('closed', () => finish({ kind: 'error', message: t('oauth.windowClosed') }))
     void win.loadURL(url).catch(() => undefined)
   })
 }
@@ -154,10 +155,10 @@ export async function getOAuth2Token(auth: AuthConfig, parent: BrowserWindow | n
     if (grant === 'password_credentials') {
       return await requestToken(auth, { grant_type: 'password', username: authString(auth, 'username'), password: authString(auth, 'password'), scope })
     }
-    if (!authString(auth, 'authUrl')) return { ok: false, message: 'URL d’autorisation manquante.' }
-    if (!authString(auth, 'redirect_uri')) return { ok: false, message: 'URL de redirection manquante.' }
+    if (!authString(auth, 'authUrl')) return { ok: false, message: t('oauth.noAuthUrl') }
+    if (!authString(auth, 'redirect_uri')) return { ok: false, message: t('oauth.noRedirectUrl') }
     const outcome = await authorize(auth, parent)
-    if (!outcome || outcome.kind === 'error') return { ok: false, message: outcome?.message ?? 'Autorisation interrompue.' }
+    if (!outcome || outcome.kind === 'error') return { ok: false, message: outcome?.message ?? t('oauth.interrupted') }
     if (outcome.kind === 'token') return tokenFromParams(Object.fromEntries(outcome.params))
     const verifier = outcome.state ? (verifiers.get(outcome.state) ?? '') : ''
     if (outcome.state) verifiers.delete(outcome.state)

@@ -6,6 +6,7 @@ import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
 import { EditorView } from '@codemirror/view'
 import type { CodegenLanguage, CodegenOption } from '@shared/api'
+import { getLocale, t } from '@shared/i18n'
 import { editorTheme } from '../editor'
 import { buildExecutionInput } from '../stores/context'
 import { useEnvironments } from '../stores/environments'
@@ -16,8 +17,8 @@ import { useWorkspace } from '../stores/workspace'
 
 let languagesCache: CodegenLanguage[] | null = null
 
-/** Libellés des options du générateur (repli sur le libellé d'origine pour une option inconnue). */
-const OPTION_LABELS: Record<string, string> = {
+/** Libellés français des options du générateur (en anglais : libellés de la bibliothèque). */
+const OPTION_LABELS_FR: Record<string, string> = {
   includeBoilerplate: 'Inclure le code d’amorce',
   indentCount: 'Taille de l’indentation',
   indentType: 'Type d’indentation',
@@ -42,7 +43,7 @@ const OPTION_LABELS: Record<string, string> = {
   useMimeType: 'Utiliser curl_mime'
 }
 
-const VALUE_LABELS: Record<string, string> = { Tab: 'Tabulation', Space: 'Espace', single: 'simples', double: 'doubles', async: 'asynchrone', sync: 'synchrone' }
+const VALUE_LABELS_FR: Record<string, string> = { Tab: 'Tabulation', Space: 'Espace', single: 'simples', double: 'doubles', async: 'asynchrone', sync: 'synchrone' }
 
 /** Coloration : JavaScript sert aussi aux langages de syntaxe proche (Java, C#, Go, Swift…). */
 function extensionsFor(syntax: string) {
@@ -85,7 +86,7 @@ export function CodePanel({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   }, [codegen.language, codegen.variant])
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const input = buildExecutionInput(tab, 'codegen', tabTitle(tab))
       void window.endora.generateCode(input, codegen.language, codegen.variant, chosen, codegen.resolveVariables).then((r) => {
         if (r.ok) {
@@ -94,10 +95,11 @@ export function CodePanel({ tab, onClose }: { tab: Tab; onClose: () => void }) {
         } else setError(r.message)
       })
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.draft, codegen, environments, activeEnv, globals, collections])
 
+  const fr = getLocale() === 'fr'
   const extensions = useMemo(() => extensionsFor(current?.syntax ?? 'text'), [current?.syntax])
 
   const setChoice = (value: string) => {
@@ -110,13 +112,13 @@ export function CodePanel({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   return (
     <aside className="code-panel">
       <header className="code-head">
-        <strong>Code</strong>
-        <button className="ghost" onClick={onClose} aria-label="Fermer le panneau de code">
+        <strong>{t('code.title')}</strong>
+        <button className="ghost" onClick={onClose} aria-label={t('code.close')}>
           ×
         </button>
       </header>
       <div className="code-tools">
-        <select value={JSON.stringify([codegen.language, codegen.variant])} onChange={(e) => setChoice(e.target.value)} aria-label="Langage">
+        <select value={JSON.stringify([codegen.language, codegen.variant])} onChange={(e) => setChoice(e.target.value)} aria-label={t('code.language')}>
           {languages.map((l) =>
             l.variants.map((v) => (
               <option key={`${l.key}_${v}`} value={JSON.stringify([l.key, v])}>
@@ -125,15 +127,15 @@ export function CodePanel({ tab, onClose }: { tab: Tab; onClose: () => void }) {
             ))
           )}
         </select>
-        <button className={`ghost small ${showOptions ? 'on' : ''}`} onClick={() => setShowOptions(!showOptions)} title="Options du générateur">
-          Options
+        <button className={`ghost small ${showOptions ? 'on' : ''}`} onClick={() => setShowOptions(!showOptions)} title={t('code.optionsTitle')}>
+          {t('code.options')}
         </button>
         <button
           className="small-btn"
           disabled={!snippet || Boolean(error)}
-          onClick={() => void window.endora.writeClipboard(snippet).then(() => toast('Code copié'))}
+          onClick={() => void window.endora.writeClipboard(snippet).then(() => toast(t('code.copied')))}
         >
-          Copier
+          {t('common.copy')}
         </button>
       </div>
       <label className="check small code-resolve">
@@ -142,23 +144,23 @@ export function CodePanel({ tab, onClose }: { tab: Tab; onClose: () => void }) {
           checked={codegen.resolveVariables}
           onChange={(e) => update((s) => ({ ...s, codegen: { ...s.codegen, resolveVariables: e.target.checked } }))}
         />
-        Résoudre les variables et appliquer l’auth
+        {t('code.resolve')}
       </label>
       {showOptions && (
         <div className="code-options">
-          {options.length === 0 && <p className="muted small">Aucune option pour ce langage.</p>}
+          {options.length === 0 && <p className="muted small">{t('code.noOptions')}</p>}
           {options.map((o) => {
             const value = chosen[o.id] ?? o.default
             return (
               <label key={o.id} className="code-option" title={o.description}>
-                <span>{OPTION_LABELS[o.id] ?? o.name}</span>
+                <span>{(fr && OPTION_LABELS_FR[o.id]) || o.name}</span>
                 {o.type === 'boolean' ? (
                   <input type="checkbox" checked={Boolean(value)} onChange={(e) => setOption(o.id, e.target.checked)} />
                 ) : o.type === 'enum' ? (
                   <select value={String(value)} onChange={(e) => setOption(o.id, e.target.value)}>
                     {(o.availableOptions ?? []).map((a) => (
                       <option key={String(a)} value={String(a)}>
-                        {VALUE_LABELS[String(a)] ?? String(a)}
+                        {(fr && VALUE_LABELS_FR[String(a)]) || String(a)}
                       </option>
                     ))}
                   </select>

@@ -13,6 +13,7 @@ import { harToCollection, isHar } from './converters/har'
 import { looksLikeWadl, wadlToCollection } from './converters/wadl'
 import { looksLikeWsdl, wsdlToCollection } from './converters/wsdl'
 import { executeHttp } from './http'
+import { t } from '@shared/i18n'
 
 type Json = Record<string, unknown>
 
@@ -30,25 +31,26 @@ const collectionTransformer = lazy(() => import('postman-collection-transformer'
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 
-const LABELS: Record<ImportFormat, string> = {
+/** Nom du format détecté (traduit à l'appel). */
+const labels = (): Record<ImportFormat, string> => ({
   curl: 'cURL',
   'collection-v1': 'Collection v1',
   'collection-v2': 'Collection v2 / v2.1',
-  environment: 'Environnement',
-  globals: 'Variables globales',
-  dump: 'Sauvegarde complète des données',
+  environment: t('importer.environment'),
+  globals: t('importer.globals'),
+  dump: t('importer.dump'),
   openapi3: 'OpenAPI 3.0',
   openapi31: 'OpenAPI 3.1',
   swagger2: 'Swagger 2.0',
   swagger1: 'Swagger 1.2',
   raml08: 'RAML 0.8',
   raml10: 'RAML 1.0',
-  graphql: 'Schéma GraphQL',
+  graphql: t('importer.graphql'),
   har: 'HTTP Archive (HAR)',
   wsdl1: 'WSDL 1.1',
   wsdl2: 'WSDL 2.0',
   wadl: 'WADL'
-}
+})
 
 /** YAML lu sans lever (`undefined` si ce n'est pas du YAML). */
 function loadYaml(text: string): unknown {
@@ -59,7 +61,7 @@ function loadYaml(text: string): unknown {
   }
 }
 
-const empty = (format: ImportFormat) => ({ ok: true as const, format, formatLabel: LABELS[format], collections: [], environments: [], globals: [], requests: [] })
+const empty = (format: ImportFormat) => ({ ok: true as const, format, formatLabel: labels()[format], collections: [], environments: [], globals: [], requests: [] })
 const fail = (message: string): ImportConversion => ({ ok: false, message })
 
 function parseJson(text: string): unknown {
@@ -85,7 +87,7 @@ function runConverter(converter: PostmanConverter, data: string, options: Json):
     try {
       converter.convert({ type: 'string', data }, options, (err, res) => {
         if (err) return reject(err)
-        if (!res?.result) return reject(new Error(res?.reason ?? 'Conversion impossible.'))
+        if (!res?.result) return reject(new Error(res?.reason ?? t('importer.failed')))
         const collections = (res.output ?? []).filter((o) => o.type === 'collection').map((o) => o.data)
         Promise.all(collections.map((c) => (isV1Collection(c) ? v1ToV21(c) : Promise.resolve(c)))).then(resolve, reject)
       })
@@ -114,9 +116,9 @@ async function openapiVersion(text: string): Promise<ImportFormat | null> {
 }
 
 export async function convertImport(name: unknown, text: unknown, options: ImportOptions): Promise<ImportConversion> {
-  if (typeof text !== 'string' || typeof name !== 'string') return fail('Paramètres invalides.')
+  if (typeof text !== 'string' || typeof name !== 'string') return fail(t('error.invalidParams'))
   const trimmed = text.replace(/^﻿/, '').trim()
-  if (trimmed === '') return fail('Contenu vide.')
+  if (trimmed === '') return fail(t('importer.empty'))
   try {
     // 1. cURL
     if (isCurlCommand(trimmed)) {
@@ -170,13 +172,13 @@ export async function convertImport(name: unknown, text: unknown, options: Impor
       if (graphqlConverter.validate({ type: 'string', data: trimmed }).result) {
         const collections = await runConverter(graphqlConverter, trimmed, {})
         // Le convertisseur nomme la collection d'après la marque de référence : nom neutre.
-        for (const c of collections) if (isObject(c['info'])) (c['info'] as Json)['name'] = name.replace(/\.(graphql|gql|json|txt)$/i, '') || 'Schéma GraphQL'
+        for (const c of collections) if (isObject(c['info'])) (c['info'] as Json)['name'] = name.replace(/\.(graphql|gql|json|txt)$/i, '') || t('importer.graphql')
         return { ...empty('graphql'), collections }
       }
     } catch {
       // Pas un schéma GraphQL.
     }
-    return fail('Format non reconnu. Formats pris en charge : cURL, collections v1/v2/v2.1, environnements, OpenAPI 3.0/3.1, Swagger 1.2/2.0, RAML 0.8/1.0, GraphQL, HAR, WSDL et WADL.')
+    return fail(t('importer.unknown'))
   } catch (err) {
     return fail(`Conversion impossible : ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -184,14 +186,14 @@ export async function convertImport(name: unknown, text: unknown, options: Impor
 
 /** Télécharge un fichier d'import (lien public) puis le convertit. */
 export async function fetchImport(url: unknown, options: ImportOptions): Promise<ImportConversion> {
-  if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) return fail('Indiquez une URL http(s).')
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) return fail(t('importer.needUrl'))
   const res = await executeHttp(
     { method: 'GET', url: url.trim(), params: [], headers: [{ id: 'a', key: 'Accept', value: 'application/json, application/yaml, text/plain, */*', enabled: true }], body: { mode: 'none' }, timeoutMs: 30_000 },
     undefined,
     { maxResponseBytes: 50 * 1024 * 1024 }
   )
   if (!res.ok) return fail(res.message)
-  if (res.status >= 400) return fail(`Le serveur a répondu ${res.status}.`)
+  if (res.status >= 400) return fail(t('importer.status', { status: res.status }))
   const name = decodeURIComponent(new URL(res.finalUrl).pathname.split('/').pop() || 'import')
   return convertImport(name, Buffer.from(res.bodyBase64, 'base64').toString('utf8'), options)
 }

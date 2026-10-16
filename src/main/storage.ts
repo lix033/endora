@@ -19,6 +19,7 @@ import { normalizeMockConfig, type MockConfig } from '@shared/mock'
 import { HISTORY_LIMIT, type Environment, type HistoryEntry, type PersistedSession } from '@shared/model'
 import { normalizeSettings, type Settings } from '@shared/settings'
 import type { Variable } from '@shared/variables'
+import { t } from '@shared/i18n'
 
 /** Chiffrement des secrets au repos. */
 export interface SecretCipher {
@@ -84,7 +85,7 @@ export class WorkspaceStorage {
           out[field] = this.cipher.decrypt(sealed[ENC])
         } catch {
           out[field] = ''
-          warnings.push(`${where} : valeur secrète « ${String(v['key'])} » illisible`)
+          warnings.push(t('storage.secretUnreadable', { where, key: String(v['key']) }))
         }
       }
       return out
@@ -208,9 +209,9 @@ export class WorkspaceStorage {
   }
 
   saveCollection(id: unknown, collection: unknown): Promise<StorageResult> {
-    if (!isValidId(id)) return Promise.resolve({ ok: false, message: 'Identifiant de collection invalide' })
+    if (!isValidId(id)) return Promise.resolve({ ok: false, message: t('storage.badCollectionId') })
     if (typeof collection !== 'object' || collection === null) {
-      return Promise.resolve({ ok: false, message: 'Collection invalide' })
+      return Promise.resolve({ ok: false, message: t('storage.badCollection') })
     }
     const sealed = isObject(collection) && 'variable' in collection ? { ...collection, variable: this.sealList(collection['variable']) } : collection
     return this.writeJson(this.collectionPath(id), sealed)
@@ -235,13 +236,13 @@ export class WorkspaceStorage {
   }
 
   saveEnvironment(env: unknown): Promise<StorageResult> {
-    if (!isObject(env) || !isValidId(env['id'])) return Promise.resolve({ ok: false, message: 'Environnement invalide' })
+    if (!isObject(env) || !isValidId(env['id'])) return Promise.resolve({ ok: false, message: t('storage.badEnvironment') })
     const data = { id: env['id'], name: String(env['name'] ?? 'Environnement'), values: this.sealList(sanitizeVariables(env['values'])) }
     return this.writeJson(join(this.environmentsDir, `${env['id']}.json`), data)
   }
 
   deleteEnvironment(id: unknown): Promise<StorageResult> {
-    if (!isValidId(id)) return Promise.resolve({ ok: false, message: 'Identifiant d’environnement invalide' })
+    if (!isValidId(id)) return Promise.resolve({ ok: false, message: t('storage.badEnvironmentId') })
     const path = join(this.environmentsDir, `${id}.json`)
     return this.serialize(path, async () => {
       try {
@@ -268,7 +269,7 @@ export class WorkspaceStorage {
   }
 
   deleteCollection(id: unknown): Promise<StorageResult> {
-    if (!isValidId(id)) return Promise.resolve({ ok: false, message: 'Identifiant de collection invalide' })
+    if (!isValidId(id)) return Promise.resolve({ ok: false, message: t('storage.badCollectionId') })
     const path = this.collectionPath(id)
     return this.serialize(path, async () => {
       try {
@@ -281,13 +282,13 @@ export class WorkspaceStorage {
   }
 
   saveHistory(entries: unknown): Promise<StorageResult> {
-    if (!Array.isArray(entries)) return Promise.resolve({ ok: false, message: 'Historique invalide' })
+    if (!Array.isArray(entries)) return Promise.resolve({ ok: false, message: t('storage.badHistory') })
     return this.writeJson(join(this.root, 'history.json'), entries.slice(0, HISTORY_LIMIT))
   }
 
   saveSession(session: unknown): Promise<StorageResult> {
     if (typeof session !== 'object' || session === null || !Array.isArray((session as PersistedSession).tabs)) {
-      return Promise.resolve({ ok: false, message: 'Session invalide' })
+      return Promise.resolve({ ok: false, message: t('storage.badSession') })
     }
     return this.writeJson(join(this.root, 'session.json'), session)
   }

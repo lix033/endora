@@ -3,6 +3,8 @@
 // `mod+shift+t`, `mod+1`…`mod+8`, `mod+9`, `mod+l`, `mod+s`, `mod+shift+s`, `mod+enter`, `mod+\`,
 // `mod+e`, `mod+f`, `mod+shift+[` / `ctrl+tab`…). Notation : `mod` = ⌘ sur macOS, Ctrl ailleurs.
 
+import { t } from './i18n'
+
 export type ShortcutAction =
   | 'newTab'
   | 'closeTab'
@@ -29,37 +31,43 @@ export type ShortcutAction =
   | 'openSettings'
   | 'toggleConsole'
 
+export type ShortcutGroup = 'tabs' | 'request' | 'interface'
+
 export interface ShortcutDefinition {
   action: ShortcutAction
-  label: string
-  group: 'Onglets' | 'Requête' | 'Interface'
+  group: ShortcutGroup
   defaults: string[]
 }
 
 export const SHORTCUTS: ShortcutDefinition[] = [
-  { action: 'newTab', label: 'Nouvel onglet', group: 'Onglets', defaults: ['mod+t'] },
-  { action: 'closeTab', label: 'Fermer l’onglet', group: 'Onglets', defaults: ['mod+w'] },
-  { action: 'forceCloseTab', label: 'Fermer l’onglet sans enregistrer', group: 'Onglets', defaults: ['mod+alt+w'] },
-  { action: 'reopenTab', label: 'Rouvrir le dernier onglet fermé', group: 'Onglets', defaults: ['mod+shift+t'] },
-  { action: 'nextTab', label: 'Onglet suivant', group: 'Onglets', defaults: ['mod+shift+]', 'ctrl+tab'] },
-  { action: 'previousTab', label: 'Onglet précédent', group: 'Onglets', defaults: ['mod+shift+[', 'ctrl+shift+tab'] },
+  { action: 'newTab', group: 'tabs', defaults: ['mod+t'] },
+  { action: 'closeTab', group: 'tabs', defaults: ['mod+w'] },
+  { action: 'forceCloseTab', group: 'tabs', defaults: ['mod+alt+w'] },
+  { action: 'reopenTab', group: 'tabs', defaults: ['mod+shift+t'] },
+  { action: 'nextTab', group: 'tabs', defaults: ['mod+shift+]', 'ctrl+tab'] },
+  { action: 'previousTab', group: 'tabs', defaults: ['mod+shift+[', 'ctrl+shift+tab'] },
   ...([1, 2, 3, 4, 5, 6, 7, 8] as const).map((n) => ({
     action: `switchToTab${n}` as ShortcutAction,
-    label: `Aller à l’onglet ${n}`,
-    group: 'Onglets' as const,
+    group: 'tabs' as const,
     defaults: [`mod+${n}`]
   })),
-  { action: 'switchToLastTab', label: 'Aller au dernier onglet', group: 'Onglets', defaults: ['mod+9'] },
-  { action: 'focusUrl', label: 'Aller à l’URL', group: 'Requête', defaults: ['mod+l'] },
-  { action: 'send', label: 'Envoyer la requête', group: 'Requête', defaults: ['mod+enter'] },
-  { action: 'save', label: 'Enregistrer', group: 'Requête', defaults: ['mod+s'] },
-  { action: 'saveAs', label: 'Enregistrer sous…', group: 'Requête', defaults: ['mod+shift+s'] },
-  { action: 'toggleSidebar', label: 'Afficher/masquer la barre latérale', group: 'Interface', defaults: ['mod+\\'] },
-  { action: 'searchSidebar', label: 'Rechercher dans la barre latérale', group: 'Interface', defaults: ['mod+f'] },
-  { action: 'import', label: 'Importer', group: 'Interface', defaults: ['mod+o'] },
-  { action: 'openSettings', label: 'Paramètres', group: 'Interface', defaults: ['mod+,'] },
-  { action: 'toggleConsole', label: 'Afficher/masquer la console', group: 'Interface', defaults: ['mod+alt+c'] }
+  { action: 'switchToLastTab', group: 'tabs', defaults: ['mod+9'] },
+  { action: 'focusUrl', group: 'request', defaults: ['mod+l'] },
+  { action: 'send', group: 'request', defaults: ['mod+enter'] },
+  { action: 'save', group: 'request', defaults: ['mod+s'] },
+  { action: 'saveAs', group: 'request', defaults: ['mod+shift+s'] },
+  { action: 'toggleSidebar', group: 'interface', defaults: ['mod+\\'] },
+  { action: 'searchSidebar', group: 'interface', defaults: ['mod+f'] },
+  { action: 'import', group: 'interface', defaults: ['mod+o'] },
+  { action: 'openSettings', group: 'interface', defaults: ['mod+,'] },
+  { action: 'toggleConsole', group: 'interface', defaults: ['mod+alt+c'] }
 ]
+
+/** Libellé d'une action dans la langue de l'interface. */
+export function shortcutLabel(action: ShortcutAction): string {
+  const n = /^switchToTab(\d)$/.exec(action)?.[1]
+  return n ? t('shortcut.switchToTab', { n }) : t(`shortcut.${action as Exclude<ShortcutAction, `switchToTab${number}`>}`)
+}
 
 export const isShortcutAction = (v: unknown): v is ShortcutAction => SHORTCUTS.some((s) => s.action === v)
 
