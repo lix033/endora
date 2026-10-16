@@ -17,12 +17,14 @@ import { DEFAULT_IMPORT_OPTIONS, IPC, type AppInfo, type ImportOptions, type Men
 import type { AuthConfig } from '@shared/auth'
 import type { ExecutionInput } from '@shared/execution'
 import type { HttpRequestSpec } from '@shared/http'
+import { sanitizeMockPatch, type MockEvent, type NewMockInput } from '@shared/mock'
 import { normalizeSettings, type Settings } from '@shared/settings'
 import { comboAccelerator, effectiveShortcuts, type ShortcutAction } from '@shared/shortcuts'
 import { THEMES } from '@shared/themes'
 import { parseCurl } from './curl'
 import { executeRequest } from './executor'
 import { executeHttp } from './http'
+import { MockManager } from './mock'
 import { getOAuth2Token } from './oauth2'
 import { ScriptSandbox } from './sandbox'
 import { WorkspaceStorage, type SecretCipher } from './storage'
@@ -35,6 +37,7 @@ const MAX_IMPORT_BYTES = 50 * 1024 * 1024
 
 let storage: WorkspaceStorage
 let sandbox: ScriptSandbox
+let mocks: MockManager
 let settings: Settings = normalizeSettings(null)
 const appWindows = new Set<number>()
 
@@ -207,7 +210,12 @@ function registerIpc(): void {
     buildMenu()
     return snapshot
   })
-  handle(IPC.collectionSave, (_event, id: unknown, collection: unknown) => storage.saveCollection(id, collection))
+  handle(IPC.collectionSave, async (_event, id: unknown, collection: unknown) => {
+    const result = await storage.saveCollection(id, collection)
+    // Déploiement automatique des mocks qui servent cette collection.
+    if (result.ok && typeof id === 'string') void mocks.collectionSaved(id)
+    return result
+  })
   handle(IPC.collectionDelete, (_event, id: unknown) => storage.deleteCollection(id))
   handle(IPC.historySave, (_event, entries: unknown) => storage.saveHistory(entries))
   handle(IPC.sessionSave, (_event, session: unknown) => storage.saveSession(session))
@@ -289,6 +297,26 @@ function registerIpc(): void {
   handle(IPC.openExternal, (_event, url: unknown) => {
     if (typeof url === 'string' && /^https?:\/\//.test(url)) void shell.openExternal(url)
   })
+  const mockId = (id: unknown): string => (typeof id === 'string' ? id : '')
+  handle(IPC.mockList, () => mocks.list())
+  handle(IPC.mockCreate, (_event, input: unknown) => {
+    const i = (typeof input === 'object' && input !== null ? input : {}) as Partial<NewMockInput>
+    return mocks.create({
+      name: typeof i.name === 'string' ? i.name.slice(0, 200) : '',
+      collectionId: typeof i.collectionId === 'string' ? i.collectionId : '',
+      publicAccess: i.publicAccess === true,
+      autoDeploy: i.autoDeploy !== false,
+      enableSession: i.enableSession !== false
+    })
+  })
+  handle(IPC.mockUpdate, (_event, id: unknown, patch: unknown) => mocks.update(mockId(id), sanitizeMockPatch(patch)))
+  handle(IPC.mockDelete, (_event, id: unknown) => mocks.remove(mockId(id)))
+  handle(IPC.mockStart, (_event, id: unknown) => mocks.start(mockId(id)))
+  handle(IPC.mockStop, (_event, id: unknown) => mocks.stop(mockId(id)))
+  handle(IPC.mockDeploy, (_event, id: unknown) => mocks.deploy(mockId(id)))
+  handle(IPC.mockLogs, (_event, id: unknown) => mocks.getLogs(mockId(id)))
+  handle(IPC.mockClearLogs, (_event, id: unknown) => mocks.clearLogs(mockId(id)))
+  handle(IPC.mockResetState, (_event, id: unknown) => mocks.resetState(mockId(id)))
   handle(
     IPC.appInfo,
     (): AppInfo => ({
@@ -316,11 +344,23 @@ void app.whenReady().then(async () => {
   storage = new WorkspaceStorage(join(app.getPath('userData'), 'workspace'), systemCipher())
   settings = await storage.readSettings()
   sandbox = new ScriptSandbox()
+  mocks = new MockManager({
+    readCollection: (id) => storage.readCollection(id),
+    runScript: (input, timeoutMs) => sandbox.runMock(input, timeoutMs),
+    save: async (configs) => {
+      await storage.saveMocks(configs)
+    },
+    // Journal et changements d'état diffusés aux fenêtres de l'interface.
+    emit: (event: MockEvent) => {
+      for (const win of BrowserWindow.getAllWindows()) if (appWindows.has(win.webContents.id)) win.webContents.send(IPC.mockEvent, event)
+    }
+  })
   if (!app.isPackaged && process.platform === 'darwin') app.dock?.setIcon(join(import.meta.dirname, '../../build/icon-512.png'))
   applyNativeTheme()
   registerIpc()
   buildMenu()
   createWindow()
+  void storage.loadMocks().then((configs) => mocks.init(configs))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().filter((w) => appWindows.has(w.webContents.id)).length === 0) createWindow()
   })
@@ -334,6 +374,7 @@ app.on('window-all-closed', () => {
 let flushed = false
 app.on('before-quit', (event) => {
   sandbox?.dispose()
+  void mocks?.dispose()
   if (flushed || !storage) return
   event.preventDefault()
   void storage.flush().finally(() => {

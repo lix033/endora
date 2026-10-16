@@ -46,6 +46,8 @@ interface WorkspaceState {
   addRequest: (collectionId: string, parentId: string | null, name: string, draft: RequestDraft) => string | null
   updateRequest: (collectionId: string, itemId: string, draft: RequestDraft) => boolean
   renameItem: (collectionId: string, itemId: string, name: string) => void
+  /** Ajoute un exemple de réponse (format v2.1, servi par les mock servers) à une requête. */
+  addExample: (collectionId: string, itemId: string, example: Record<string, unknown>) => boolean
   duplicateItem: (collectionId: string, itemId: string) => string | null
   deleteItem: (collectionId: string, itemId: string) => void
   moveItem: (from: { collectionId: string; itemId: string }, to: { collectionId: string; parentId: string | null; beforeId?: string }) => void
@@ -79,6 +81,18 @@ function persistCollection(id: string): void {
       })
     }, 300)
   )
+}
+
+/** Enregistre tout de suite une collection (sans attendre le délai), par exemple avant d'en créer un mock. */
+export async function saveCollectionNow(id: string): Promise<boolean> {
+  const previous = pendingCollections.get(id)
+  if (previous) clearTimeout(previous)
+  pendingCollections.delete(id)
+  const c = useWorkspace.getState().collections.find((x) => x.id === id)
+  if (!c) return false
+  const r = await window.endora.saveCollection(id, exportCollection(c, { includeCurrentValues: true }))
+  if (!r.ok) toast(`Enregistrement impossible : ${r.message}`, 'error')
+  return r.ok
 }
 
 function persistHistory(): void {
@@ -213,6 +227,15 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (item) item.name = name.trim()
       })
     },
+
+    addExample: (collectionId, itemId, example) =>
+      mutate(collectionId, (c) => {
+        const item = findItem(c.items, itemId)
+        if (item?.type !== 'request') return false
+        const existing = Array.isArray(item.extra?.['response']) ? (item.extra['response'] as unknown[]) : []
+        item.extra = { ...item.extra, response: [...existing, example] }
+        return true
+      }) ?? false,
 
     duplicateItem: (collectionId, itemId) =>
       mutate(collectionId, (c) => {

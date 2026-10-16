@@ -109,6 +109,8 @@ export type TabView =
   | { kind: 'collection'; collectionId: string }
   | { kind: 'folder'; collectionId: string; folderId: string }
   | { kind: 'runner'; collectionId: string; folderId?: string }
+  /** Services locaux (mock servers) ; `mockId` : mock sélectionné. */
+  | { kind: 'mocks'; mockId?: string }
 
 export type SettingsSection = 'general' | 'themes' | 'shortcuts' | 'update'
 

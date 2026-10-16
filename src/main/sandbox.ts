@@ -8,14 +8,25 @@
 
 import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, session, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import type { MockScriptInput, MockScriptOutput } from '@shared/scripting/mock-runtime'
 import type { SandboxHttpRequest, SandboxHttpResult, ScriptExecution, ScriptOutcome } from '@shared/scripting/types'
 
 export const SANDBOX_IPC = {
   run: 'sandbox:run',
   done: 'sandbox:done',
   http: 'sandbox:http',
-  ready: 'sandbox:ready'
+  ready: 'sandbox:ready',
+  mockRun: 'sandbox:mock-run',
+  mockDone: 'sandbox:mock-done'
 } as const
+
+interface PendingMock {
+  resolve: (o: MockScriptOutput) => void
+  input: MockScriptInput
+  timer: ReturnType<typeof setTimeout>
+}
+
+const mockFailure = (input: MockScriptInput, error: string): MockScriptOutput => ({ ok: false, error, response: input.response, state: input.state, logs: [] })
 
 interface Pending {
   resolve: (o: ScriptOutcome) => void
@@ -41,6 +52,7 @@ export class ScriptSandbox {
   private ready: Promise<void> | null = null
   private markReady: (() => void) | null = null
   private readonly pending = new Map<string, Pending>()
+  private readonly pendingMock = new Map<string, PendingMock>()
 
   constructor() {
     ipcMain.on(SANDBOX_IPC.ready, (event) => {
@@ -53,6 +65,14 @@ export class ScriptSandbox {
       clearTimeout(p.timer)
       this.pending.delete(id)
       p.resolve(outcome)
+    })
+    ipcMain.on(SANDBOX_IPC.mockDone, (event: IpcMainEvent, id: string, output: MockScriptOutput) => {
+      if (!this.isSandbox(event)) return
+      const p = this.pendingMock.get(id)
+      if (!p) return
+      clearTimeout(p.timer)
+      this.pendingMock.delete(id)
+      p.resolve(output)
     })
     ipcMain.handle(SANDBOX_IPC.http, async (event: IpcMainInvokeEvent, id: string, req: SandboxHttpRequest): Promise<SandboxHttpResult> => {
       const p = this.isSandbox(event) ? this.pending.get(id) : undefined
@@ -115,7 +135,28 @@ export class ScriptSandbox {
       this.pending.delete(id)
       p.resolve({ ok: false, error: { message, source: 'Script' }, request: { method: 'GET', url: '', headers: [], body: { mode: 'none' } }, mutations: [], tests: [], logs: [], skipRequest: false, sentRequests: [] })
     }
+    for (const [id, p] of this.pendingMock) {
+      clearTimeout(p.timer)
+      this.pendingMock.delete(id)
+      p.resolve(mockFailure(p.input, message))
+    }
     if (win && !win.isDestroyed()) win.destroy()
+  }
+
+  /** Script d'un mock server : même isolation que les scripts de requêtes, sans réseau. */
+  async runMock(input: MockScriptInput, timeoutMs: number): Promise<MockScriptOutput> {
+    await this.ensure()
+    const win = this.win
+    if (!win || win.isDestroyed()) return mockFailure(input, 'Sandbox des scripts indisponible.')
+    return new Promise<MockScriptOutput>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingMock.delete(input.id)
+        resolve(mockFailure(input, `Délai d’exécution du script dépassé (${Math.round(timeoutMs / 1000)} s).`))
+        this.reset('Exécution interrompue.')
+      }, timeoutMs)
+      this.pendingMock.set(input.id, { resolve, input, timer })
+      win.webContents.send(SANDBOX_IPC.mockRun, input)
+    })
   }
 
   async run(exec: ScriptExecution, sendRequest: Pending['sendRequest'], timeoutMs: number): Promise<ScriptOutcome> {

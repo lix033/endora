@@ -7,17 +7,34 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+## [0.2.2] — 2026-10-16
+
+### Ajouté
+
+- **Barre du haut** : logo, accès aux espaces de travail (bientôt disponibles), notifications
+  (mises à jour disponibles, avec pastille), services et paramètres.
+- **Mock servers** (Services) : autant de mocks que voulu, créés depuis une collection, avec une URL
+  automatique ; accès public ou privé (clé), déploiement automatique des modifications, sessions
+  (`x-mock-session`), script injecté exécuté à chaque requête (`pm.request`, `pm.response`,
+  `pm.state`), journal des requêtes. Les mocks actifs redémarrent avec l'application.
+- **Exemples de réponse** : « Enregistrer comme exemple » sur une réponse ; les mocks les servent.
+
+### Modifié
+
+- **Paramètres › Mises à jour** : la section « À propos » n'affiche plus que la version et le
+  stockage des secrets.
+
+### Corrigé
+
+- **macOS** : l'application est signée (Developer ID) et notarisée par Apple ; Gatekeeper ne
+  l'empêche plus de s'ouvrir. Le build macOS de la 0.2.1 échouait à la signature.
+
 ## [0.2.1] — 2026-10-16
 
 ### Ajouté
 
 - **Onglets** : réorganisation par glisser-déposer ; renommage par double-clic ou par le menu
   contextuel (renomme aussi la requête, le dossier, la collection ou l'environnement affiché).
-
-### Modifié
-
-- **macOS** : l'application est signée (Developer ID) et notarisée par Apple ; Gatekeeper ne
-  l'empêche plus de s'ouvrir.
 
 ## [0.2.0] — 2026-10-16
 

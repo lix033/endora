@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC, type EndoraApi, type MenuAction } from '@shared/api'
+import type { MockEvent } from '@shared/mock'
 
 const api: EndoraApi = {
   sendHttp: (requestId, spec) => ipcRenderer.invoke(IPC.httpSend, requestId, spec),
@@ -30,6 +31,22 @@ const api: EndoraApi = {
   checkForUpdates: (source) => ipcRenderer.invoke(IPC.updatesCheck, source),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
   appInfo: () => ipcRenderer.invoke(IPC.appInfo),
+
+  mockList: () => ipcRenderer.invoke(IPC.mockList),
+  mockCreate: (input) => ipcRenderer.invoke(IPC.mockCreate, input),
+  mockUpdate: (id, patch) => ipcRenderer.invoke(IPC.mockUpdate, id, patch),
+  mockDelete: (id) => ipcRenderer.invoke(IPC.mockDelete, id),
+  mockStart: (id) => ipcRenderer.invoke(IPC.mockStart, id),
+  mockStop: (id) => ipcRenderer.invoke(IPC.mockStop, id),
+  mockDeploy: (id) => ipcRenderer.invoke(IPC.mockDeploy, id),
+  mockLogs: (id) => ipcRenderer.invoke(IPC.mockLogs, id),
+  mockClearLogs: (id) => ipcRenderer.invoke(IPC.mockClearLogs, id),
+  mockResetState: (id) => ipcRenderer.invoke(IPC.mockResetState, id),
+  onMockEvent: (listener) => {
+    const handler = (_event: IpcRendererEvent, e: MockEvent) => listener(e)
+    ipcRenderer.on(IPC.mockEvent, handler)
+    return () => ipcRenderer.removeListener(IPC.mockEvent, handler)
+  },
 
   onMenuAction: (listener) => {
     const handler = (_event: IpcRendererEvent, action: MenuAction) => listener(action)

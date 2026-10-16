@@ -99,6 +99,8 @@ export function tabTitle(tab: PersistedTab): string {
         const v = tab.view
         return lookupItem(ws.collections, v.collectionId, v.folderId)?.name ?? tab.title
       }
+      case 'mocks':
+        return 'Services'
       case 'runner': {
         const v = tab.view
         const target = v.folderId ? lookupItem(ws.collections, v.collectionId, v.folderId)?.name : ws.collections.find((c) => c.id === v.collectionId)?.name
@@ -129,6 +131,7 @@ const sameView = (a: TabView | undefined, b: TabView): boolean => {
   switch (b.kind) {
     case 'settings':
     case 'globals':
+    case 'mocks':
       return true
     case 'environment':
       return (a as typeof b).environmentId === b.environmentId
@@ -252,9 +255,9 @@ export const useTabs = create<TabsState>((set, get) => {
         () => ({ ...blank(), title: '', view }),
         opts?.preview ?? false
       )
-      // Les réglages s'ouvrent sur la section demandée.
-      if (view.kind === 'settings' && view.section) {
-        const tab = get().tabs.find((t) => t.view?.kind === 'settings')
+      // Les réglages s'ouvrent sur la section demandée, les services sur le mock demandé.
+      if ((view.kind === 'settings' && view.section) || (view.kind === 'mocks' && view.mockId)) {
+        const tab = get().tabs.find((t) => t.view?.kind === view.kind)
         if (tab) patchTab(tab.id, { view })
       }
     },
@@ -479,6 +482,7 @@ export const useTabs = create<TabsState>((set, get) => {
           const exists =
             v.kind === 'settings' ||
             v.kind === 'globals' ||
+            v.kind === 'mocks' ||
             (v.kind === 'environment' && envs.some((e) => e.id === v.environmentId)) ||
             (v.kind === 'collection' && ws.collections.some((c) => c.id === v.collectionId)) ||
             (v.kind === 'folder' && lookupItem(ws.collections, v.collectionId, v.folderId)?.type === 'folder') ||

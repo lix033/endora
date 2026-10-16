@@ -5,15 +5,18 @@ import { ConsolePanel } from './components/ConsolePanel'
 import { ContextMenuHost } from './components/ContextMenu'
 import { DialogHost, Toasts } from './components/Dialogs'
 import { CollectionView, EnvironmentView } from './components/EntityViews'
+import { MocksView } from './components/MocksView'
 import { RequestPanel } from './components/RequestPanel'
 import { RunnerView } from './components/RunnerView'
 import { ResponsePanel } from './components/ResponsePanel'
 import { autoCheckUpdates, SettingsView } from './components/SettingsView'
 import { Sidebar } from './components/Sidebar'
 import { TabBar } from './components/TabBar'
+import { TopBar } from './components/TopBar'
 import { dispatch, installKeyboardShortcuts, useLayout } from './shortcuts'
 import { useConsole } from './stores/console'
 import { useEnvironments } from './stores/environments'
+import { startMockEvents } from './stores/mocks'
 import { startSessionPersistence, useTabs, type Tab } from './stores/tabs'
 import { useWorkspace } from './stores/workspace'
 
@@ -65,6 +68,8 @@ function TabContent({ tab }: { tab: Tab }) {
       return <CollectionView tab={tab} />
     case 'runner':
       return <RunnerView tab={tab} />
+    case 'mocks':
+      return <MocksView tab={tab} />
     default:
       return <RequestEditor tab={tab} />
   }
@@ -79,9 +84,12 @@ export function App() {
   useEffect(initWorkspace, [])
   useEffect(() => installKeyboardShortcuts(), [])
   useEffect(() => window.endora.onMenuAction(dispatch), [])
+  useEffect(() => startMockEvents(), [])
 
   return (
-    <div className={`app ${sidebarVisible ? '' : 'no-sidebar'}`}>
+    <div className="shell">
+      <TopBar />
+      <div className={`app ${sidebarVisible ? '' : 'no-sidebar'}`}>
       {sidebarVisible && <Sidebar />}
       <main className={`workbench ${consoleOpen ? 'with-console' : ''}`}>
         <TabBar />
@@ -111,6 +119,7 @@ export function App() {
           </button>
         </footer>
       </main>
+      </div>
       <DialogHost />
       <ContextMenuHost />
       <Toasts />

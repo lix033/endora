@@ -13,6 +13,7 @@ import {
 } from '@shared/shortcuts'
 import { THEME_IDS, THEMES, type ThemeId } from '@shared/themes'
 import { shortcutCapture } from '../shortcuts'
+import { notifyUpdate } from '../stores/notifications'
 import { isMac, useSettings } from '../stores/settings'
 import { useTabs, type Tab } from '../stores/tabs'
 import { confirmDialog, toast } from '../stores/ui'
@@ -49,7 +50,7 @@ export function SettingsView({ tab }: { tab: Tab }) {
 
 // --- Général -----------------------------------------------------------------------------------
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <div className="setting">
       <div>
@@ -375,6 +376,7 @@ function UpdateSettings() {
     const r = await window.endora.checkForUpdates(useSettings.getState().settings.updates.source)
     checkedAt = new Date()
     lastResult = r
+    notifyUpdate(r)
     setResult(r)
     setChecking(false)
   }
@@ -436,22 +438,6 @@ function UpdateSettings() {
                 <td>{info.version}</td>
               </tr>
               <tr>
-                <th>Electron</th>
-                <td>{info.electron}</td>
-              </tr>
-              <tr>
-                <th>Chromium</th>
-                <td>{info.chrome}</td>
-              </tr>
-              <tr>
-                <th>Node.js</th>
-                <td>{info.node}</td>
-              </tr>
-              <tr>
-                <th>Plateforme</th>
-                <td>{info.platform}</td>
-              </tr>
-              <tr>
                 <th>Secrets</th>
                 <td>{info.secretsEncrypted ? 'Chiffrés par le trousseau du système' : 'Trousseau indisponible : stockés en clair'}</td>
               </tr>
@@ -470,6 +456,6 @@ export function autoCheckUpdates(): void {
   void window.endora.checkForUpdates(updates.source).then((r) => {
     checkedAt = new Date()
     lastResult = r
-    if (r.ok && r.updateAvailable) toast(`Endora ${r.latest} est disponible (Paramètres › Mises à jour).`)
+    if (notifyUpdate(r) && r.ok) toast(`Endora ${r.latest} est disponible (voir les notifications).`)
   })
 }

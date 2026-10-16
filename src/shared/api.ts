@@ -3,6 +3,7 @@
 import type { AuthConfig } from './auth'
 import type { ExecutionInput, ExecutionOutput } from './execution'
 import type { HttpRequestSpec, HttpResult } from './http'
+import type { MockActionResult, MockEvent, MockLogEntry, MockPatch, MockState, NewMockInput } from './mock'
 import type { Environment, HistoryEntry, PersistedSession } from './model'
 import type { Settings } from './settings'
 import type { ShortcutAction } from './shortcuts'
@@ -144,6 +145,18 @@ export interface EndoraApi {
   openExternal(url: string): Promise<void>
   appInfo(): Promise<AppInfo>
 
+  mockList(): Promise<MockState[]>
+  mockCreate(input: NewMockInput): Promise<MockActionResult>
+  mockUpdate(id: string, patch: MockPatch): Promise<MockActionResult>
+  mockDelete(id: string): Promise<StorageResult>
+  mockStart(id: string): Promise<MockActionResult>
+  mockStop(id: string): Promise<MockActionResult>
+  mockDeploy(id: string): Promise<MockActionResult>
+  mockLogs(id: string): Promise<MockLogEntry[]>
+  mockClearLogs(id: string): Promise<void>
+  mockResetState(id: string): Promise<void>
+  onMockEvent(listener: (event: MockEvent) => void): () => void
+
   onMenuAction(listener: (action: MenuAction) => void): () => void
 }
 
@@ -174,5 +187,16 @@ export const IPC = {
   importFetch: 'import:fetch',
   codegenLanguages: 'codegen:languages',
   codegenOptions: 'codegen:options',
-  codegenGenerate: 'codegen:generate'
+  codegenGenerate: 'codegen:generate',
+  mockList: 'mock:list',
+  mockCreate: 'mock:create',
+  mockUpdate: 'mock:update',
+  mockDelete: 'mock:delete',
+  mockStart: 'mock:start',
+  mockStop: 'mock:stop',
+  mockDeploy: 'mock:deploy',
+  mockLogs: 'mock:logs',
+  mockClearLogs: 'mock:clear-logs',
+  mockResetState: 'mock:reset-state',
+  mockEvent: 'mock:event'
 } as const

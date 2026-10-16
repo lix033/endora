@@ -5,6 +5,7 @@
 //   environments/<id>.json — environnements (valeurs initiales et courantes)
 //   globals.json           — variables globales
 //   settings.json          — réglages
+//   mocks.json             — mock servers (configuration, script, version déployée)
 // Les valeurs des variables de type « secret » sont chiffrées sur disque quand un chiffreur est
 // disponible (trousseau du système via safeStorage).
 // Chaque écriture passe par un fichier temporaire puis un renommage, et les écritures d'un même
@@ -14,6 +15,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { StorageResult, WorkspaceSnapshot } from '@shared/api'
+import { normalizeMockConfig, type MockConfig } from '@shared/mock'
 import { HISTORY_LIMIT, type Environment, type HistoryEntry, type PersistedSession } from '@shared/model'
 import { normalizeSettings, type Settings } from '@shared/settings'
 import type { Variable } from '@shared/variables'
@@ -212,6 +214,24 @@ export class WorkspaceStorage {
     }
     const sealed = isObject(collection) && 'variable' in collection ? { ...collection, variable: this.sealList(collection['variable']) } : collection
     return this.writeJson(this.collectionPath(id), sealed)
+  }
+
+  /** Collection enregistrée (format v2.1, secrets déchiffrés), ou `null` si absente ou illisible. */
+  async readCollection(id: string): Promise<unknown> {
+    if (!isValidId(id)) return null
+    const r = await this.readJson(this.collectionPath(id))
+    if (!r.found || 'error' in r || !isObject(r.data)) return null
+    return { ...r.data, variable: this.openList(r.data['variable'], [], id) }
+  }
+
+  async loadMocks(): Promise<MockConfig[]> {
+    const r = await this.readJson(join(this.root, 'mocks.json'))
+    if (!r.found || 'error' in r || !isObject(r.data) || !Array.isArray(r.data['mocks'])) return []
+    return r.data['mocks'].map(normalizeMockConfig).filter((m): m is MockConfig => m !== null)
+  }
+
+  saveMocks(mocks: MockConfig[]): Promise<StorageResult> {
+    return this.writeJson(join(this.root, 'mocks.json'), { mocks })
   }
 
   saveEnvironment(env: unknown): Promise<StorageResult> {

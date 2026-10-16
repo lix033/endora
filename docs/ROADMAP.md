@@ -21,6 +21,6 @@ process principal ou un worker isolé, jamais dans le renderer.
 | 8 | Cookies, proxy, certificats, SSL, réglages | |
 | 9 | WebSocket, Socket.IO, SSE, GraphQL (introspection/subscriptions) | |
 | 10 | gRPC, MQTT, MCP | |
-| 11 | Mock server local, visualiseur, documentation/export PDF | |
+| 11 | Mock server local ✔︎ (exemples, sessions, script, accès privé/public, déploiement auto), visualiseur, documentation/export PDF | en cours |
 | 12 | Tests de performance, fichiers locaux + Git, recherche plein texte | |
 | 13 | Thèmes ✔︎ et raccourcis ✔︎ (livrés avec les phases 3-5, comme l'onglet Paramètres et la vérification des mises à jour), interceptor/proxy de capture, Kafka, packaging et mises à jour | |

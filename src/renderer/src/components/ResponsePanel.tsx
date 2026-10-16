@@ -3,12 +3,15 @@ import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
+import { exportRequest } from '@shared/collection-v21'
 import type { HttpResponseResult } from '@shared/http'
 import type { ResponseFormat } from '@shared/settings'
 import type { TestResult } from '@shared/scripting/types'
 import { editorTheme } from '../editor'
 import { useSettings } from '../stores/settings'
 import type { Tab } from '../stores/tabs'
+import { toast } from '../stores/ui'
+import { lookupItem, useWorkspace } from '../stores/workspace'
 
 type View = 'pretty' | 'raw' | 'preview' | 'headers' | 'tests'
 type Kind = 'json' | 'xml' | 'html' | 'image' | 'text'
@@ -60,7 +63,32 @@ export function ResponsePanel({ tab }: { tab: Tab }) {
       </section>
     )
   }
-  return <ResponseView key={tab.id} result={result} tests={outcome?.tests ?? []} testError={outcome?.testError} />
+  return <ResponseView key={tab.id} tab={tab} result={result} tests={outcome?.tests ?? []} testError={outcome?.testError} />
+}
+
+/** En-têtes qui ne décrivent plus le corps une fois décodé. */
+const TRANSPORT_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'keep-alive'])
+
+/** Enregistre la réponse comme exemple de la requête (format v2.1) : les mock servers la servent. */
+function saveAsExample(tab: Tab, result: HttpResponseResult, body: string, language: string): void {
+  if (tab.source?.kind !== 'collection') return
+  const { collectionId, itemId } = tab.source
+  const item = lookupItem(useWorkspace.getState().collections, collectionId, itemId)
+  const existing = Array.isArray(item?.extra?.['response']) ? (item.extra['response'] as Array<{ name?: unknown }>) : []
+  const base = `${result.status} ${result.statusText}`.trim()
+  let name = base
+  for (let i = 2; existing.some((e) => e.name === name); i++) name = `${base} (${i})`
+  const ok = useWorkspace.getState().addExample(collectionId, itemId, {
+    name,
+    originalRequest: exportRequest(tab.draft),
+    status: result.statusText,
+    code: result.status,
+    _postman_previewlanguage: language,
+    header: result.headers.filter(([k]) => !TRANSPORT_HEADERS.has(k.toLowerCase())).map(([key, value]) => ({ key, value })),
+    cookie: [],
+    body
+  })
+  toast(ok ? `Exemple « ${name} » enregistré : les mock servers de la collection le servent.` : 'Requête introuvable dans la collection.', ok ? 'info' : 'error')
 }
 
 function TestsView({ tests, testError }: { tests: TestResult[]; testError?: { message: string; source: string } }) {
@@ -96,7 +124,7 @@ function TestsView({ tests, testError }: { tests: TestResult[]; testError?: { me
   )
 }
 
-function ResponseView({ result, tests, testError }: { result: HttpResponseResult; tests: TestResult[]; testError?: { message: string; source: string } }) {
+function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: HttpResponseResult; tests: TestResult[]; testError?: { message: string; source: string } }) {
   const [view, setView] = useState<View>('pretty')
   const format = useSettings((s) => s.settings.general.responseFormat)
   const kind = kindOf(result.contentType, format)
@@ -140,6 +168,11 @@ function ResponseView({ result, tests, testError }: { result: HttpResponseResult
           <span>{result.timeMs} ms</span>
           <span>{formatSize(result.sizeBytes)}</span>
           {format !== 'auto' && <span className="muted small">format : {format.toUpperCase()}</span>}
+          {tab.source?.kind === 'collection' && kind !== 'image' && (
+            <button className="small-btn" onClick={() => saveAsExample(tab, result, text, kind === 'json' || kind === 'xml' || kind === 'html' ? kind : 'text')} title="Réponse servie par les mock servers de la collection">
+              Enregistrer comme exemple
+            </button>
+          )}
         </div>
       </header>
       <div className="response-body">

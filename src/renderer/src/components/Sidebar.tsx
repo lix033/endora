@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import logo from '../assets/logo.svg'
 import { sidebarSearchRef } from '../shortcuts'
 import { useEnvironments } from '../stores/environments'
 import { useTabs } from '../stores/tabs'
@@ -20,18 +19,9 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <div className="brand">
-          <img src={logo} alt="" />
-          Endora
-        </div>
-        <div className="row tight">
-          <button className="small-btn" onClick={() => openImportDialog()} title="Importer une collection, un environnement ou un cURL">
-            Importer
-          </button>
-          <button className="small-btn" onClick={() => useTabs.getState().openSettings()} title="Paramètres" aria-label="Paramètres">
-            ⚙
-          </button>
-        </div>
+        <button className="small-btn" onClick={() => openImportDialog()} title="Importer une collection, un environnement ou un cURL">
+          Importer
+        </button>
       </div>
       <nav className="tabs sidebar-tabs">
         {(

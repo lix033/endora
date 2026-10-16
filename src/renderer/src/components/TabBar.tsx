@@ -24,7 +24,8 @@ const VIEW_BADGE: Record<TabView['kind'], string> = {
   globals: 'GLB',
   collection: 'COL',
   folder: 'DOS',
-  runner: 'RUN'
+  runner: 'RUN',
+  mocks: 'SRV'
 }
 
 export function TabBar() {
