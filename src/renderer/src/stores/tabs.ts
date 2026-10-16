@@ -4,7 +4,10 @@
 //   sauf si le réglage « ouvrir dans un nouvel onglet » est actif ;
 // - une ouverture explicite (double clic) rend l'onglet permanent ;
 // - fermer un onglet modifié demande confirmation (réglable) ; un onglet fermé peut être rouvert.
+// - les onglets se réordonnent par glisser-déposer.
 // Inféré : une modification rend l'onglet d'aperçu permanent.
+// Choix Endora : renommer un onglet renomme l'élément qu'il affiche (requête, dossier, collection,
+// environnement) ; un onglet non enregistré ne change que de titre.
 // Les réglages, environnements, collections et dossiers s'ouvrent aussi dans des onglets (« vues »).
 
 import { create } from 'zustand'
@@ -27,6 +30,7 @@ import {
   type TabView
 } from '@shared/model'
 import { buildExecutionInput, tabCollection } from './context'
+import { moveBefore } from './reorder'
 import { useConsole, type NewConsoleEntry } from './console'
 import { useEnvironments } from './environments'
 import { useSettings } from './settings'
@@ -55,6 +59,9 @@ interface TabsState {
   activateRelative: (delta: number) => void
   activateIndex: (index: number) => void
   pin: (id: string) => void
+  /** Place l'onglet juste avant `beforeId`, ou à la fin si `beforeId` est nul. */
+  move: (id: string, beforeId: string | null) => void
+  rename: (id: string, name: string) => void
   updateDraft: (id: string, fn: (d: RequestDraft) => RequestDraft) => void
   replaceDraft: (id: string, draft: RequestDraft) => void
   close: (id: string, opts?: { force?: boolean }) => Promise<boolean>
@@ -104,6 +111,11 @@ export function tabTitle(tab: PersistedTab): string {
     if (item) return item.name
   }
   return tab.title
+}
+
+/** Les vues Paramètres, Globales et Runner ont un titre fixe. */
+export function canRename(tab: PersistedTab): boolean {
+  return !tab.view || tab.view.kind === 'environment' || tab.view.kind === 'collection' || tab.view.kind === 'folder'
 }
 
 const sameSource = (a: TabSource, b: TabSource): boolean => {
@@ -265,6 +277,24 @@ export const useTabs = create<TabsState>((set, get) => {
     },
 
     pin: (id) => patchTab(id, { preview: false }),
+
+    move: (id, beforeId) => {
+      const tabs = get().tabs
+      const next = moveBefore(tabs, id, beforeId)
+      if (next !== tabs) set({ tabs: next })
+    },
+
+    rename: (id, name) => {
+      const tab = get().tabs.find((t) => t.id === id)
+      const trimmed = name.trim()
+      if (!tab || trimmed === '' || !canRename(tab)) return
+      const v = tab.view
+      if (v?.kind === 'environment') useEnvironments.getState().rename(v.environmentId, trimmed)
+      else if (v?.kind === 'collection') useWorkspace.getState().renameCollection(v.collectionId, trimmed)
+      else if (v?.kind === 'folder') useWorkspace.getState().renameItem(v.collectionId, v.folderId, trimmed)
+      else if (tab.source?.kind === 'collection') useWorkspace.getState().renameItem(tab.source.collectionId, tab.source.itemId, trimmed)
+      patchTab(id, { title: trimmed, preview: false })
+    },
 
     updateDraft: (id, fn) => patchTab(id, (t) => ({ draft: fn(t.draft), preview: false })),
 

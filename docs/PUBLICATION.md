@@ -141,24 +141,45 @@ la CI signe l'app macOS en *ad hoc*, ce qui suffit à la lancer sur Apple Silico
 
 ### macOS — certificat Developer ID + notarisation
 
-Prérequis : un compte Apple Developer (99 $/an).
+Sans notarisation, macOS 15+ affiche « Apple n'a pas pu vérifier qu'Endora ne contient pas de
+logiciel malveillant ». Une signature **Developer ID** seule ne suffit pas : il faut aussi la
+notarisation par Apple.
 
-1. Dans Xcode ou sur developer.apple.com, créez un certificat **Developer ID Application**, exportez-le
-   en `.p12` avec un mot de passe.
-2. Encodez-le : `base64 -i certificat.p12 | pbcopy`.
-3. Créez un mot de passe d'application sur <https://account.apple.com> (Connexion et sécurité ›
+Prérequis : un compte Apple Developer (99 $/an) et le certificat **Developer ID Application** dans
+le trousseau (Xcode › Réglages › Comptes › Gérer les certificats › + › Developer ID Application).
+Vérification : `security find-identity -v -p codesigning` doit lister
+`Developer ID Application: <nom> (<TEAM_ID>)` ; le `TEAM_ID` est entre parenthèses.
+
+1. **Exporter le certificat** : Trousseau d'accès › session › Mes certificats › clic droit sur
+   « Developer ID Application: … » › Exporter › format `.p12`, avec un mot de passe. N'exportez que
+   ce certificat (pas les certificats Apple Development / Distribution).
+2. Encodez-le : `base64 -i DeveloperID.p12 | pbcopy`, puis supprimez le `.p12`.
+3. Créez un **mot de passe pour app** sur <https://account.apple.com> (Connexion et sécurité ›
    Mots de passe pour les apps).
-4. Ajoutez les secrets :
+4. Ajoutez les secrets (Settings › Secrets and variables › Actions) :
 
 | Secret | Valeur |
 |---|---|
 | `MAC_CSC_LINK` | le `.p12` encodé en base64 |
 | `MAC_CSC_KEY_PASSWORD` | mot de passe du `.p12` |
 | `APPLE_ID` | adresse du compte Apple Developer |
-| `APPLE_APP_SPECIFIC_PASSWORD` | mot de passe d'application |
-| `APPLE_TEAM_ID` | identifiant d'équipe (10 caractères) |
+| `APPLE_APP_SPECIFIC_PASSWORD` | mot de passe pour app |
+| `APPLE_TEAM_ID` | identifiant d'équipe du certificat Developer ID (10 caractères) |
 
-La CI signe alors l'app et la fait notariser par Apple automatiquement.
+La CI signe alors l'app et la fait notariser par Apple automatiquement. Si `MAC_CSC_LINK` est défini
+sans les trois secrets `APPLE_*`, le build échoue plutôt que de publier une app signée mais bloquée.
+Après l'empaquetage, la CI vérifie l'app avec `spctl` et `stapler` ; en cas d'échec, la release
+reste en brouillon.
+
+**Tester en local** (le certificat est pris dans le trousseau) :
+
+```bash
+# Une seule fois : enregistre les identifiants de notarisation dans le trousseau.
+xcrun notarytool store-credentials endora-notary --apple-id <adresse> --team-id <TEAM_ID>
+
+APPLE_KEYCHAIN_PROFILE=endora-notary npm run dist:mac
+spctl -a -vv -t execute release/mac-arm64/Endora.app   # attendu : accepted, source=Notarized Developer ID
+```
 
 ### Windows — signature Authenticode
 
@@ -199,5 +220,7 @@ winget), `scripts/render-packaging.mjs` (génération des manifestes),
 | `build` échoue pour une seule plateforme | relancez ce job (« Re-run failed jobs ») ; la release reste en brouillon tant que tout n'a pas réussi |
 | Le cask Homebrew n'est pas mis à jour | secret `HOMEBREW_TAP_TOKEN` absent ou sans droit d'écriture sur le tap |
 | La PR winget est refusée | lisez le commentaire du bot de validation ; corrigez `packaging/winget/` et relancez le job `winget` |
-| L'app macOS est « endommagée » après téléchargement | build non signé mis en quarantaine : `xattr -dr com.apple.quarantine /Applications/Endora.app`, ou configurez la signature |
+| L'app macOS est « endommagée » ou « Apple n'a pas pu vérifier… » après téléchargement | build non notarisé mis en quarantaine : configurez la signature et la notarisation (section 3) ; en attendant, `xattr -dr com.apple.quarantine /Applications/Endora.app` |
+| Build macOS : `MAC_CSC_LINK est défini mais APPLE_… manque` | ajoutez les trois secrets `APPLE_*` (section 3) |
+| Étape « Vérifier la notarisation » en échec | `spctl` rejette l'app : vérifiez que le certificat est bien un **Developer ID Application** et que `APPLE_TEAM_ID` est celui de ce certificat |
 | `npm ci` échoue en CI sur des scripts d'installation | la liste `allowScripts` de `package.json` doit couvrir tout nouveau paquet à script (`npm install-scripts approve` / `deny`) |

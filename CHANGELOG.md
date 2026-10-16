@@ -7,6 +7,18 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+## [0.2.1] — 2026-10-16
+
+### Ajouté
+
+- **Onglets** : réorganisation par glisser-déposer ; renommage par double-clic ou par le menu
+  contextuel (renomme aussi la requête, le dossier, la collection ou l'environnement affiché).
+
+### Modifié
+
+- **macOS** : l'application est signée (Developer ID) et notarisée par Apple ; Gatekeeper ne
+  l'empêche plus de s'ouvrir.
+
 ## [0.2.0] — 2026-10-16
 
 ### Corrigé

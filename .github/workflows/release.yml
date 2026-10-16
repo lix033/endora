@@ -98,6 +98,11 @@ jobs:
           extra=""
           if [ "$RUNNER_OS" = macOS ]; then
             if [ -n "$MAC_CSC_LINK" ]; then
+              # Signé mais non notarisé, l'app serait quand même bloquée par Gatekeeper.
+              if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+                echo "::error::MAC_CSC_LINK est défini mais APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD ou APPLE_TEAM_ID manque : notarisation impossible."
+                exit 1
+              fi
               export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
             else
               # Sans certificat Apple : signature ad hoc, indispensable sur Apple Silicon.
@@ -111,6 +116,16 @@ jobs:
           fi
           [ -z "$APPLE_ID" ] && unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
           npx electron-builder ${{ matrix.args }} --publish always $extra
+      # La release reste en brouillon si Gatekeeper refuse l'app (le job publish dépend de celui-ci).
+      - name: Vérifier la notarisation (macOS)
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK != ''
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+        run: |
+          for app in release/mac*/Endora.app; do
+            spctl --assess --type execute -vv "$app"
+            xcrun stapler validate "$app"
+          done
 
   publish:
     name: Publier la release

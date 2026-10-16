@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type DragEvent, type MouseEvent, type ReactNode } from 'react'
+import { useMemo, type DragEvent, type MouseEvent, type ReactNode } from 'react'
 import { create } from 'zustand'
 import { exportCollection } from '@shared/collection-v21'
 import { emptyDraft, isLoose, type Collection, type TreeItem } from '@shared/model'
@@ -6,6 +6,7 @@ import { useTabs } from '../stores/tabs'
 import { confirmDialog, openImportDialog, toast } from '../stores/ui'
 import { useWorkspace } from '../stores/workspace'
 import { openMenu } from './ContextMenu'
+import { RenameInput } from './RenameInput'
 import { copyAsCurl } from './RequestPanel'
 
 const DRAG_TYPE = 'application/x-endora-item'
@@ -45,33 +46,6 @@ function matches(item: TreeItem, filter: string): boolean {
   if (item.name.toLowerCase().includes(filter)) return true
   if (item.type === 'request') return item.request.url.toLowerCase().includes(filter)
   return item.items.some((i) => matches(i, filter))
-}
-
-function RenameInput({ initial, onDone }: { initial: string; onDone: (name: string | null) => void }) {
-  const ref = useRef<HTMLInputElement>(null)
-  const done = useRef(false)
-  useEffect(() => {
-    ref.current?.focus()
-    ref.current?.select()
-  }, [])
-  const finish = (value: string | null) => {
-    if (done.current) return
-    done.current = true
-    onDone(value)
-  }
-  return (
-    <input
-      ref={ref}
-      className="rename"
-      defaultValue={initial}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') finish(e.currentTarget.value)
-        if (e.key === 'Escape') finish(null)
-      }}
-      onBlur={(e) => finish(e.currentTarget.value)}
-    />
-  )
 }
 
 /** Ajoute une requête vide, l'ouvre dans un onglet et passe en renommage. */

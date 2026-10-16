@@ -152,6 +152,10 @@ button.wide { width: 100%; }
 .tab:hover .tab-close.dirty .dirty-dot { display: none; }
 .tab:hover .tab-close.dirty .close-x { display: inline; visibility: visible; }
 .tab-new { font-size: 18px; padding: 0 12px; }
+.tab.dragging { opacity: 0.5; }
+.tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+.tab.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+.tab .rename { height: 22px; padding: 0 4px; font: inherit; }
 
 /* Éditeur clé/valeur : champs fichier */
 .kv .kv-kind { width: 90px; }

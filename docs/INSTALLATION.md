@@ -44,15 +44,17 @@ curl -fsSL https://lix033.github.io/endora/install.sh | ENDORA_VERSION=0.1.0 sh
    `Endora-<version>-mac-x64.dmg` (Intel) depuis la [dernière release](https://github.com/lix033/endora/releases/latest).
 2. Ouvrez le `.dmg` et glissez **Endora** dans **Applications**.
 
-> **Si macOS indique que l'app « ne peut pas être ouverte » ou « provient d'un développeur non identifié »** :
-> c'est le cas tant que les builds ne sont pas signés par un certificat Apple. Faites un clic droit
-> sur Endora › **Ouvrir** › **Ouvrir**, ou levez la quarantaine :
+> **Si macOS indique « Apple n'a pas pu vérifier qu'Endora ne contient pas de logiciel malveillant »**
+> (ou que l'app « est endommagée ») : c'est le cas des versions publiées avant la notarisation des
+> builds. Cliquez sur **Terminé**, ouvrez **Réglages Système › Confidentialité et sécurité**, puis
+> **Ouvrir quand même** en bas de la page (le clic droit › Ouvrir ne suffit plus depuis macOS 15).
+> Ou levez la quarantaine dans le Terminal :
 >
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/Endora.app
 > ```
 >
-> Le script d'installation et Homebrew le font pour vous.
+> Le script d'installation le fait pour vous.
 
 ---
 
