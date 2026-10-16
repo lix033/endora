@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { parseDataFile, type RunPlanItem, type RunRequestResult } from '@shared/runner'
 import { useEnvironments } from '../stores/environments'
 import { exportRun, runnerKey, useRunner, type RunRecord } from '../stores/runner'
+import { useScrollMemory, useTabState } from '../stores/tabui'
 import type { Tab } from '../stores/tabs'
 import { toast } from '../stores/ui'
 import { useWorkspace } from '../stores/workspace'
@@ -18,7 +19,7 @@ export function RunnerView({ tab }: { tab: Tab }) {
   const key = runnerKey(view.collectionId, view.folderId)
   const shownId = runner.shown[key]
   const shown = shownId ? runner.runs.find((r) => r.id === shownId) : undefined
-  if (shown) return <RunResults run={shown} onBack={() => runner.show(key, null)} onRerun={() => void runner.start(view.collectionId, view.folderId)} />
+  if (shown) return <RunResults key={shown.id} tabId={tab.id} run={shown} onBack={() => runner.show(key, null)} onRerun={() => void runner.start(view.collectionId, view.folderId)} />
   return <RunConfig collectionId={view.collectionId} folderId={view.folderId} />
 }
 
@@ -295,8 +296,9 @@ function ResultRow({ r }: { r: RunRequestResult }) {
   )
 }
 
-function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => void; onRerun: () => void }) {
-  const [filter, setFilter] = useState<Filter>('all')
+function RunResults({ tabId, run, onBack, onRerun }: { tabId: string; run: RunRecord; onBack: () => void; onRerun: () => void }) {
+  const [filter, setFilter] = useTabState<Filter>(tabId, `runner.filter.${run.id}`, 'all')
+  const listRef = useScrollMemory<HTMLDivElement>(tabId, `runner.results.${run.id}.${filter}`)
   const stop = useRunner((s) => s.stop)
   const tests = run.results.flatMap((r) => r.tests)
   const passed = tests.filter((x) => x.passed && !x.skipped).length
@@ -373,7 +375,7 @@ function RunResults({ run, onBack, onRerun }: { run: RunRecord; onBack: () => vo
           </button>
         ))}
       </nav>
-      <div className="run-list">
+      <div className="run-list" ref={listRef}>
         {[...byIteration].map(([iteration, results]) => (
           <section key={iteration}>
             <div className="history-day">{t('run.iteration', { n: iteration + 1 })}</div>

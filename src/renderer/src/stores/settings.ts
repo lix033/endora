@@ -2,13 +2,16 @@
 
 import { create } from 'zustand'
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '@shared/settings'
-import { activeTheme, themeCssVariables, type Theme } from '@shared/themes'
+import { activeTheme, isThemeId, THEMES, themeCssVariables, type Theme } from '@shared/themes'
 import { t } from '@shared/i18n'
 import { toast } from './ui'
 
 export const isMac = navigator.platform.toLowerCase().includes('mac')
 
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+/** Thème choisi, transmis par le process principal dans l'URL de la fenêtre (voir createWindow). */
+const bootTheme = new URLSearchParams(location.search).get('theme')
 
 interface SettingsState {
   settings: Settings
@@ -30,7 +33,7 @@ function applyTheme(theme: Theme): void {
 export const useSettings = create<SettingsState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   systemDark: darkQuery.matches,
-  theme: activeTheme(DEFAULT_SETTINGS.theme, darkQuery.matches),
+  theme: isThemeId(bootTheme) ? THEMES[bootTheme] : activeTheme(DEFAULT_SETTINGS.theme, darkQuery.matches),
 
   init: (s) => {
     const settings = normalizeSettings(s)

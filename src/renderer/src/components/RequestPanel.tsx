@@ -1,30 +1,45 @@
-import { useMemo, useState, type ClipboardEvent } from 'react'
-import CodeMirror from '@uiw/react-codemirror'
+import { useMemo, useRef, useState, type ClipboardEvent } from 'react'
+import type { Extension } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 import { json } from '@codemirror/lang-json'
 import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
 import { javascript } from '@codemirror/lang-javascript'
 import { effectiveAuth } from '@shared/auth'
+import { isFormatLanguage } from '@shared/format'
 import { t } from '@shared/i18n'
 import { importRequest } from '@shared/collection-v21'
 import { generateCurl, isCurlCommand } from '@shared/curl'
 import { HTTP_METHODS } from '@shared/http'
 import type { BodyMode, ProtocolVersion, RawLanguage, RequestDraft } from '@shared/model'
 import { paramsFromUrl, urlWithParams } from '@shared/url'
+import { beautifyView, formatLanguage } from '../beautify'
 import { editorTheme, variableHighlight } from '../editor'
 import { tabChain } from '../stores/context'
+import { memoryKey, useScrollMemory, useTabState } from '../stores/tabui'
 import { isDirty, useTabs, type Tab } from '../stores/tabs'
 import { toast } from '../stores/ui'
 import { useWorkspace } from '../stores/workspace'
 import { AuthEditor } from './AuthEditor'
+import { BeautifyButton } from './BeautifyButton'
+import { CodeEditor } from './CodeEditor'
 import { KeyValueEditor } from './KeyValueEditor'
 import { ScriptsEditor } from './ScriptsEditor'
+import { horizontalWheel } from './Splitter'
 import { useScopes, VarInput } from './VarInput'
 import { urlInputRef, useLayout } from '../shortcuts'
 
 type Section = 'params' | 'auth' | 'headers' | 'body' | 'scripts' | 'settings'
 
 const languageExtension = { json: [json()], xml: [xml()], html: [html()], text: [], javascript: [javascript()] }
+
+/** Extensions du body brut, une liste par langage (stable d'un rendu à l'autre). */
+const bodyExtensions = Object.fromEntries(
+  (Object.keys(languageExtension) as RawLanguage[]).map((l) => [
+    l,
+    [...languageExtension[l], editorTheme, variableHighlight, ...(isFormatLanguage(l) ? [formatLanguage.of(l)] : [])]
+  ])
+) as Record<RawLanguage, Extension[]>
 
 export async function copyAsCurl(draft: RequestDraft): Promise<void> {
   await window.endora.writeClipboard(generateCurl(draft))
@@ -34,7 +49,10 @@ export async function copyAsCurl(draft: RequestDraft): Promise<void> {
 export function RequestPanel({ tab }: { tab: Tab }) {
   const { updateDraft, replaceDraft, send, cancel, save } = useTabs.getState()
   const codePanel = useLayout((s) => s.codePanel)
-  const [section, setSection] = useState<Section>('params')
+  // Sous-onglet, position du body et défilement : retrouvés au retour sur l'onglet.
+  const [section, setSection] = useTabState<Section>(tab.id, 'request.section', 'params')
+  const bodyView = useRef<EditorView | null>(null)
+  const tabBodyRef = useScrollMemory<HTMLDivElement>(tab.id, `request.${section}`)
   const [converting, setConverting] = useState(false)
   const collections = useWorkspace((s) => s.collections)
   const collectionId = tab.source?.kind === 'collection' ? tab.source.collectionId : null
@@ -99,12 +117,12 @@ export function RequestPanel({ tab }: { tab: Tab }) {
         <button type="button" onClick={() => void save(tab.id)} title={t('req.save')} className={isDirty(tab) ? 'dirty-save' : ''}>
           {t('req.save')}
         </button>
-        <button type="button" className={codePanel ? 'on-outline' : ''} onClick={() => useLayout.getState().toggleCodePanel()} title={t('req.codeTitle')}>
-          {'</>'} {t('req.code')}
+        <button type="button" className={`code-btn ${codePanel ? 'on-outline' : ''}`} onClick={() => useLayout.getState().toggleCodePanel()} title={t('req.codeTitle')}>
+          {'</>'} <span className="code-label">{t('req.code')}</span>
         </button>
       </form>
 
-      <nav className="tabs">
+      <nav className="tabs" ref={horizontalWheel}>
         <button className={section === 'params' ? 'active' : ''} onClick={() => setSection('params')}>
           {t('req.params')} {count(d.params) > 0 && <span className="badge">{count(d.params)}</span>}
         </button>
@@ -125,7 +143,7 @@ export function RequestPanel({ tab }: { tab: Tab }) {
         </button>
       </nav>
 
-      <div className="tab-body">
+      <div className="tab-body" ref={tabBodyRef}>
         {section === 'params' && (
           <KeyValueEditor rows={d.params} scopes={scopes} onChange={(params) => edit((x) => ({ ...x, params, url: urlWithParams(x.url, params) }))} />
         )}
@@ -149,6 +167,16 @@ export function RequestPanel({ tab }: { tab: Tab }) {
                   <option value="javascript">JavaScript</option>
                 </select>
               )}
+              {d.body.mode === 'raw' && isFormatLanguage(d.body.language) && (
+                <BeautifyButton
+                  onClick={() => {
+                    const view = bodyView.current
+                    if (!view) return
+                    view.focus()
+                    void beautifyView(view)
+                  }}
+                />
+              )}
             </div>
             {d.body.mode === 'none' &&
               (d.extra?.['body'] ? (
@@ -157,12 +185,13 @@ export function RequestPanel({ tab }: { tab: Tab }) {
                 <p className="muted">{t('req.noBody')}</p>
               ))}
             {d.body.mode === 'raw' && (
-              <CodeMirror
-                key={tab.id}
+              <CodeEditor
+                memory={memoryKey(tab.id, 'request.body')}
                 value={d.body.raw}
                 height="100%"
                 theme="none"
-                extensions={[...languageExtension[d.body.language], editorTheme, variableHighlight]}
+                extensions={bodyExtensions[d.body.language]}
+                onCreateEditor={(view) => (bodyView.current = view)}
                 onChange={(raw) => editBody({ raw })}
               />
             )}
@@ -170,7 +199,7 @@ export function RequestPanel({ tab }: { tab: Tab }) {
             {d.body.mode === 'formdata' && <KeyValueEditor rows={d.body.formdata} scopes={scopes} onChange={(formdata) => editBody({ formdata })} allowFiles />}
           </div>
         )}
-        {section === 'scripts' && <ScriptsEditor scripts={d.scripts} editorKey={tab.id} onChange={(scripts) => edit((x) => ({ ...x, scripts }))} />}
+        {section === 'scripts' && <ScriptsEditor scripts={d.scripts} tabId={tab.id} scope="request.scripts" onChange={(scripts) => edit((x) => ({ ...x, scripts }))} />}
         {section === 'settings' && (
           <div className="form-grid">
             <label>{t('req.httpVersion')}</label>

@@ -26,6 +26,9 @@ export const en = {
   'app.hideSidebar': 'Hide Sidebar',
   'app.showSidebar': 'Show Sidebar',
   'app.console': 'Console',
+  'app.resizeSidebar': 'Resize the sidebar (double-click: default width)',
+  'app.resizeRequest': 'Resize request and response (double-click: default height)',
+  'app.resizeCode': 'Resize the code panel (double-click: default width)',
 
   // Onglets
   'tabs.new': 'New Tab',
@@ -155,6 +158,9 @@ export const fr: Translation<typeof en> = {
   'app.hideSidebar': 'Masquer la barre latérale',
   'app.showSidebar': 'Barre latérale',
   'app.console': 'Console',
+  'app.resizeSidebar': 'Redimensionner la barre latérale (double clic : largeur par défaut)',
+  'app.resizeRequest': 'Redimensionner requête et réponse (double clic : hauteur par défaut)',
+  'app.resizeCode': 'Redimensionner le panneau de code (double clic : largeur par défaut)',
 
   'tabs.new': 'Nouvel onglet',
   'tabs.close': 'Fermer l’onglet',

@@ -1,18 +1,21 @@
-import { useMemo, useState } from 'react'
-import CodeMirror from '@uiw/react-codemirror'
+import { useEffect, useMemo, useState } from 'react'
 import { json } from '@codemirror/lang-json'
 import { xml } from '@codemirror/lang-xml'
 import { html } from '@codemirror/lang-html'
 import { exportRequest } from '@shared/collection-v21'
+import { formatCode, indentJson } from '@shared/format'
 import { t } from '@shared/i18n'
 import type { HttpResponseResult } from '@shared/http'
 import type { ResponseFormat } from '@shared/settings'
 import type { TestResult } from '@shared/scripting/types'
 import { editorTheme } from '../editor'
 import { useSettings } from '../stores/settings'
+import { memoryKey, objectVersion, useScrollMemory, useTabState } from '../stores/tabui'
 import type { Tab } from '../stores/tabs'
 import { toast } from '../stores/ui'
 import { lookupItem, useWorkspace } from '../stores/workspace'
+import { CodeEditor } from './CodeEditor'
+import { horizontalWheel } from './Splitter'
 
 type View = 'pretty' | 'raw' | 'preview' | 'headers' | 'tests'
 type Kind = 'json' | 'xml' | 'html' | 'image' | 'text'
@@ -92,8 +95,42 @@ function saveAsExample(tab: Tab, result: HttpResponseResult, body: string, langu
   toast(ok ? t('res.exampleSaved', { name }) : t('res.exampleMissing'), ok ? 'info' : 'error')
 }
 
-function TestsView({ tests, testError }: { tests: TestResult[]; testError?: { message: string; source: string } }) {
-  const [filter, setFilter] = useState<'all' | 'passed' | 'failed' | 'skipped'>('all')
+/** Au-delà, un XML ou HTML reçu n'est pas mis en forme : Prettier deviendrait trop lent. */
+const PRETTY_LIMIT = 512 * 1024
+const prettyCache = new WeakMap<HttpResponseResult, { kind: Kind; text: string }>()
+
+/**
+ * Corps « Pretty » : JSON réindenté sans réécrire ses valeurs (grands entiers intacts), XML et HTML
+ * mis en forme par Prettier (asynchrone, texte brut en attendant). Mémorisé par réponse.
+ */
+function usePretty(result: HttpResponseResult, text: string, kind: Kind): string {
+  const sync = useMemo(() => {
+    const cached = prettyCache.get(result)
+    if (cached?.kind === kind) return cached.text
+    if (kind !== 'json') return null
+    const out = indentJson(text) ?? text
+    prettyCache.set(result, { kind, text: out })
+    return out
+  }, [result, text, kind])
+  const [formatted, setFormatted] = useState<{ result: HttpResponseResult; kind: Kind; text: string } | null>(null)
+  useEffect(() => {
+    if (sync !== null || (kind !== 'xml' && kind !== 'html') || text.length > PRETTY_LIMIT) return
+    let live = true
+    void formatCode(text, kind).then((r) => {
+      const out = r.ok ? r.code : text
+      prettyCache.set(result, { kind, text: out })
+      if (live) setFormatted({ result, kind, text: out })
+    })
+    return () => {
+      live = false
+    }
+  }, [sync, result, text, kind])
+  if (sync !== null) return sync
+  return formatted && formatted.result === result && formatted.kind === kind ? formatted.text : text
+}
+
+function TestsView({ tabId, tests, testError }: { tabId: string; tests: TestResult[]; testError?: { message: string; source: string } }) {
+  const [filter, setFilter] = useTabState<'all' | 'passed' | 'failed' | 'skipped'>(tabId, 'response.testsFilter', 'all')
   const visible = tests.filter((x) =>
     filter === 'all' ? true : filter === 'skipped' ? x.skipped : filter === 'passed' ? x.passed && !x.skipped : !x.passed
   )
@@ -126,18 +163,14 @@ function TestsView({ tests, testError }: { tests: TestResult[]; testError?: { me
 }
 
 function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: HttpResponseResult; tests: TestResult[]; testError?: { message: string; source: string } }) {
-  const [view, setView] = useState<View>('pretty')
+  // Vue affichée et positions : retrouvées au retour sur l'onglet, tant que la réponse est la même.
+  const [view, setView] = useTabState<View>(tab.id, 'response.view', 'pretty')
+  const place = `response.${view}.${objectVersion(result)}`
+  const bodyRef = useScrollMemory<HTMLDivElement>(tab.id, place)
   const format = useSettings((s) => s.settings.general.responseFormat)
   const kind = kindOf(result.contentType, format)
   const text = useMemo(() => (kind === 'image' ? '' : decode(result.bodyBase64)), [result, kind])
-  const pretty = useMemo(() => {
-    if (kind !== 'json') return text
-    try {
-      return JSON.stringify(JSON.parse(text), null, 2)
-    } catch {
-      return text
-    }
-  }, [text, kind])
+  const pretty = usePretty(result, text, kind)
   const ext = kind === 'json' ? [json()] : kind === 'xml' ? [xml()] : kind === 'html' ? [html()] : []
   const statusClass = result.status < 300 ? 'ok' : result.status < 400 ? 'redirect' : 'fail'
   const passed = tests.filter((x) => x.passed && !x.skipped).length
@@ -146,7 +179,7 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
   return (
     <section className="response">
       <header className="response-meta">
-        <nav className="tabs">
+        <nav className="tabs" ref={horizontalWheel}>
           {(['pretty', 'raw', 'preview', 'headers', 'tests'] as const).map((v) => (
             <button key={v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>
               {
@@ -176,8 +209,8 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
           )}
         </div>
       </header>
-      <div className="response-body">
-        {view === 'tests' && <TestsView tests={tests} testError={testError} />}
+      <div className="response-body" ref={bodyRef}>
+        {view === 'tests' && <TestsView tabId={tab.id} tests={tests} testError={testError} />}
         {view === 'headers' && (
           <table className="headers-table">
             <tbody>
@@ -200,7 +233,8 @@ function ResponseView({ tab, result, tests, testError }: { tab: Tab; result: Htt
           (kind === 'image' ? (
             <p className="muted">{t('res.binary', { type: result.contentType ?? '' })}</p>
           ) : (
-            <CodeMirror
+            <CodeEditor
+              memory={memoryKey(tab.id, place)}
               value={view === 'pretty' ? pretty : text}
               height="100%"
               theme="none"

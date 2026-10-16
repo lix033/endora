@@ -46,13 +46,15 @@ let settings: Settings = normalizeSettings(null)
 const appWindows = new Set<number>()
 
 function createWindow(): void {
+  const theme = activeTheme(settings.theme, nativeTheme.shouldUseDarkColors)
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 900,
-    minHeight: 600,
+    // L'interface s'adapte à la largeur disponible (requêtes de conteneur) : fenêtre réductible.
+    minWidth: 760,
+    minHeight: 520,
     title: 'Endora',
-    backgroundColor: activeTheme(settings.theme, nativeTheme.shouldUseDarkColors).colors.bg,
+    backgroundColor: theme.colors.bg,
     // Icône de fenêtre en développement (dans l'app empaquetée, l'icône vient de l'exécutable).
     ...(app.isPackaged ? {} : { icon: join(import.meta.dirname, '../../build/icon-512.png') }),
     webPreferences: {
@@ -83,10 +85,14 @@ function createWindow(): void {
     if (url !== win.webContents.getURL()) event.preventDefault()
   })
 
+  // Le thème passe dans l'URL : l'interface l'applique avant son premier rendu, sans attendre le
+  // chargement de l'espace de travail (sinon éclair du thème par défaut au démarrage).
   if (process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    const url = new URL(process.env['ELECTRON_RENDERER_URL'])
+    url.searchParams.set('theme', theme.id)
+    void win.loadURL(url.toString())
   } else {
-    void win.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+    void win.loadFile(join(import.meta.dirname, '../renderer/index.html'), { query: { theme: theme.id } })
   }
 }
 

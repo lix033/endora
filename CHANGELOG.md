@@ -7,6 +7,44 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+## [0.4.0] — 2026-10-16
+
+### Ajouté
+
+- **Beautify (Prettier)** : bouton « Beautify » et raccourci ⌘B / Ctrl+B (modifiable) pour mettre
+  en forme le body brut (JSON, XML, HTML, JavaScript), les scripts pre-request / post-response et
+  les scripts de mock. Les `{{variables}}` sont conservées et les objets JSON dépliés ; ⌘Z annule la
+  mise en forme ; un code invalide affiche l'erreur avec sa position.
+- **Onglets qui se souviennent** : en revenant sur un onglet, on retrouve le sous-onglet (Params,
+  Body…), le mode du body, la vue de la réponse (Pretty, Raw, Headers…), la phase des scripts, les
+  filtres, ainsi que le curseur, la sélection, le défilement et l'historique d'annulation des
+  éditeurs. Le script d'un mock en cours d'édition n'est plus perdu en changeant d'onglet.
+- **Volets redimensionnables** : barre latérale, séparation requête/réponse et panneau de code se
+  règlent à la souris (ou au clavier) ; double clic pour revenir à la taille par défaut. Les tailles
+  sont mémorisées.
+
+### Modifié
+
+- **Responsivité** : l'interface s'adapte à la place disponible (petite fenêtre, panneau de code
+  ouvert, grand écran) : barre d'URL sur deux lignes, champs d'auth et éditeur de scripts empilés,
+  onglets et statistiques de réponse qui passent à la ligne, Runner et Services réorganisés. Taille
+  minimale de la fenêtre abaissée à 760 × 520.
+- **Défilement** : les barres d'onglets défilent à la molette et l'onglet actif reste visible.
+- **Pretty** : le XML et le HTML de la réponse sont mis en forme (jusqu'à 512 Ko).
+
+### Corrigé
+
+- Plus d'éclair bleu nuit au démarrage : la fenêtre et l'interface s'ouvrent directement aux
+  couleurs du thème choisi.
+- Une URL longue ou une ligne de réponse très longue élargissait toute l'interface au-delà de la
+  fenêtre (boutons Send/Save hors écran).
+- La vue Pretty arrondissait les grands entiers JSON (ex. identifiants sur 19 chiffres).
+- Les valeurs d'en-têtes de réponse très longues débordaient au lieu de passer à la ligne.
+- ⌘S (raccourci « Enregistrer ») et le menu Fichier › Enregistrer enregistrent le script d'un mock
+  dans Services ; le raccourci était intercepté sans effet.
+
+## [0.3.1] — 2026-10-16
+
 ### Ajouté
 
 - **Thème Vantablack** : noir absolu sur toute l'interface (fond, panneaux, éditeurs), pensé pour

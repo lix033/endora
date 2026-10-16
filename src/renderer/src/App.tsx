@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { setLocale, t } from '@shared/i18n'
 import logo from './assets/logo.svg'
 import { CodePanel } from './components/CodePanel'
@@ -12,9 +12,10 @@ import { RunnerView } from './components/RunnerView'
 import { ResponsePanel } from './components/ResponsePanel'
 import { autoCheckUpdates, SettingsView } from './components/SettingsView'
 import { Sidebar } from './components/Sidebar'
+import { Splitter } from './components/Splitter'
 import { TabBar } from './components/TabBar'
 import { TopBar } from './components/TopBar'
-import { dispatch, installKeyboardShortcuts, useLayout } from './shortcuts'
+import { DEFAULT_SIZES, dispatch, installKeyboardShortcuts, useLayout } from './shortcuts'
 import { useConsole } from './stores/console'
 import { useEnvironments } from './stores/environments'
 import { useSettings } from './stores/settings'
@@ -46,15 +47,45 @@ function initWorkspace(): void {
     })
 }
 
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
+
 function RequestEditor({ tab }: { tab: Tab }) {
   const codePanel = useLayout((s) => s.codePanel)
+  const requestRatio = useLayout((s) => s.requestRatio)
+  const codeWidth = useLayout((s) => s.codeWidth)
+  const { resize } = useLayout.getState()
+  const editor = useRef<HTMLDivElement>(null)
+  const row = useRef<HTMLDivElement>(null)
   return (
-    <div className={`editor-row ${codePanel ? 'with-code' : ''}`}>
-      <div className="editor">
+    <div ref={row} className={`editor-row ${codePanel ? 'with-code' : ''}`} style={{ '--code-width': `${codeWidth}px` } as CSSProperties}>
+      <div ref={editor} className="editor" style={{ '--request-ratio': `${Math.round(requestRatio * 1000) / 10}%` } as CSSProperties}>
         <RequestPanel tab={tab} />
+        <Splitter
+          axis="y"
+          className="request-split"
+          label={t('app.resizeRequest')}
+          onDrag={(y) => {
+            const r = editor.current!.getBoundingClientRect()
+            resize({ requestRatio: clamp((y - r.top) / r.height, 0.1, 0.9) })
+          }}
+          onReset={() => resize({ requestRatio: DEFAULT_SIZES.requestRatio })}
+        />
         <ResponsePanel tab={tab} />
       </div>
-      {codePanel && <CodePanel tab={tab} onClose={() => useLayout.getState().toggleCodePanel()} />}
+      {codePanel && (
+        <div className="code-pane">
+          <Splitter
+            axis="x"
+            label={t('app.resizeCode')}
+            onDrag={(x) => {
+              const r = row.current!.getBoundingClientRect()
+              resize({ codeWidth: clamp(r.right - x, 260, Math.max(260, r.width - 280)) })
+            }}
+            onReset={() => resize({ codeWidth: DEFAULT_SIZES.codeWidth })}
+          />
+          <CodePanel tab={tab} onClose={() => useLayout.getState().toggleCodePanel()} />
+        </div>
+      )}
     </div>
   )
 }
@@ -82,6 +113,7 @@ export function App() {
   const loaded = useWorkspace((s) => s.loaded)
   const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeId) ?? null)
   const sidebarVisible = useLayout((s) => s.sidebarVisible)
+  const sidebarWidth = useLayout((s) => s.sidebarWidth)
   const consoleOpen = useConsole((s) => s.open)
   // Langue appliquée avant le rendu des enfants ; l'arbre est remonté quand elle change.
   const language = useSettings((s) => s.settings.general.language)
@@ -99,8 +131,17 @@ export function App() {
   return (
     <div className="shell" key={language}>
       <TopBar />
-      <div className={`app ${sidebarVisible ? '' : 'no-sidebar'}`}>
+      <div className={`app ${sidebarVisible ? '' : 'no-sidebar'}`} style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}>
       {sidebarVisible && <Sidebar />}
+      {sidebarVisible && (
+        <Splitter
+          axis="x"
+          className="sidebar-split"
+          label={t('app.resizeSidebar')}
+          onDrag={(x) => useLayout.getState().resize({ sidebarWidth: clamp(x, 180, Math.min(600, window.innerWidth * 0.5)) })}
+          onReset={() => useLayout.getState().resize({ sidebarWidth: DEFAULT_SIZES.sidebarWidth })}
+        />
+      )}
       <main className={`workbench ${consoleOpen ? 'with-console' : ''}`}>
         <TabBar />
         {!loaded ? (

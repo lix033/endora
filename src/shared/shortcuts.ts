@@ -1,7 +1,8 @@
 // Raccourcis clavier modifiables. Catalogue et combinaisons par défaut repris du comportement
 // observé dans le client de référence (table de raccourcis : `mod+t`, `mod+w`, `mod+alt+w`,
 // `mod+shift+t`, `mod+1`…`mod+8`, `mod+9`, `mod+l`, `mod+s`, `mod+shift+s`, `mod+enter`, `mod+\`,
-// `mod+e`, `mod+f`, `mod+shift+[` / `ctrl+tab`…). Notation : `mod` = ⌘ sur macOS, Ctrl ailleurs.
+// `mod+e`, `mod+f`, `mod+shift+[` / `ctrl+tab`…) ; `mod+b` met en forme l'éditeur qui a le focus.
+// Notation : `mod` = ⌘ sur macOS, Ctrl ailleurs.
 
 import { t } from './i18n'
 
@@ -25,6 +26,7 @@ export type ShortcutAction =
   | 'save'
   | 'saveAs'
   | 'send'
+  | 'beautify'
   | 'toggleSidebar'
   | 'searchSidebar'
   | 'import'
@@ -56,6 +58,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
   { action: 'send', group: 'request', defaults: ['mod+enter'] },
   { action: 'save', group: 'request', defaults: ['mod+s'] },
   { action: 'saveAs', group: 'request', defaults: ['mod+shift+s'] },
+  { action: 'beautify', group: 'request', defaults: ['mod+b'] },
   { action: 'toggleSidebar', group: 'interface', defaults: ['mod+\\'] },
   { action: 'searchSidebar', group: 'interface', defaults: ['mod+f'] },
   { action: 'import', group: 'interface', defaults: ['mod+o'] },

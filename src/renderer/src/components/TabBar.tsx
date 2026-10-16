@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { t } from '@shared/i18n'
 import type { TabView } from '@shared/model'
 import { useEnvironments } from '../stores/environments'
@@ -7,6 +7,7 @@ import { canRename, isDirty, tabTitle, useTabs } from '../stores/tabs'
 import { openMenu } from './ContextMenu'
 import { EnvironmentSelector } from './Environments'
 import { RenameInput } from './RenameInput'
+import { horizontalWheel } from './Splitter'
 
 const DRAG_TYPE = 'application/x-endora-tab'
 
@@ -38,6 +39,16 @@ export function TabBar() {
   const [renaming, setRenaming] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropHint, setDropHint] = useState<DropHint>(null)
+  const scroller = useRef<HTMLDivElement | null>(null)
+  const scrollerRef = useCallback((el: HTMLDivElement | null) => {
+    scroller.current = el
+    return horizontalWheel(el)
+  }, [])
+
+  // L'onglet actif reste visible quand la barre déborde (ouverture, raccourcis ⌘1…⌘9).
+  useEffect(() => {
+    scroller.current?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeId, tabs.length])
 
   const showHint = (hint: DropHint) => {
     if (hint?.id !== dropHint?.id || hint?.side !== dropHint?.side) setDropHint(hint)
@@ -63,6 +74,7 @@ export function TabBar() {
     <div className="tabbar" role="tablist">
       <div
         className="tabbar-scroll"
+        ref={scrollerRef}
         // Dépôt après le dernier onglet : place l'onglet à la fin.
         onDragOver={(e) => {
           if (!e.dataTransfer.types.includes(DRAG_TYPE)) return

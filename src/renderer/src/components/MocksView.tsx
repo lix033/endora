@@ -1,21 +1,25 @@
-import { useEffect, useState } from 'react'
-import CodeMirror from '@uiw/react-codemirror'
+import { useEffect, useRef, useState } from 'react'
 import { javascript } from '@codemirror/lang-javascript'
 import { EditorView } from '@codemirror/view'
 import { dateLocale, t, type MessageKey } from '@shared/i18n'
 import { MOCK_HEADERS, type MockState } from '@shared/mock'
 import { isLoose } from '@shared/model'
+import { beautifyView, formatLanguage } from '../beautify'
 import { editorTheme } from '../editor'
 import { useMocks } from '../stores/mocks'
+import { registerViewSave } from '../shortcuts'
+import { memoryKey, useScrollMemory, useTabState } from '../stores/tabui'
 import { useTabs, type Tab } from '../stores/tabs'
 import { confirmDialog, toast } from '../stores/ui'
 import { useWorkspace } from '../stores/workspace'
+import { BeautifyButton } from './BeautifyButton'
+import { CodeEditor } from './CodeEditor'
 import { Toggle } from './SettingsView'
 
 /** Sélection « nouveau mock » dans l'onglet Services. */
 const NEW = 'new'
 
-const extensions = [javascript(), EditorView.lineWrapping, editorTheme]
+const extensions = [javascript(), EditorView.lineWrapping, editorTheme, formatLanguage.of('javascript')]
 
 /** Extraits du script de mock (textes propres à Endora), dans la langue de l'interface. */
 const SNIPPETS: Array<{ label: MessageKey; code: MessageKey }> = [
@@ -112,35 +116,47 @@ function NewMockForm({ onCreated }: { onCreated: (id: string) => void }) {
   )
 }
 
-function ScriptEditor({ mock }: { mock: MockState }) {
-  const [script, setScript] = useState(mock.config.script)
+function ScriptEditor({ tabId, mock }: { tabId: string; mock: MockState }) {
+  // Script en cours d'édition : conservé (non enregistré) quand on change d'onglet.
+  const [script, setScript] = useTabState(tabId, `mock.script.${mock.config.id}`, mock.config.script)
+  const view = useRef<EditorView | null>(null)
   const dirty = script !== mock.config.script
   const save = () => void useMocks.getState().update(mock.config.id, { script }).then((ok) => ok && toast(t('mocks.scriptSaved')))
-  const append = (code: string) => setScript((s) => (s.trim() === '' ? code : `${s.replace(/\s+$/, '')}\n\n${code}`))
+  // ⌘S (raccourci « Enregistrer », modifiable) et le menu Fichier › Enregistrer enregistrent le script.
+  useEffect(() => registerViewSave(tabId, () => dirty && save()), [tabId, script, dirty]) // eslint-disable-line react-hooks/exhaustive-deps
+  const append = (code: string) => setScript(script.trim() === '' ? code : `${script.replace(/\s+$/, '')}\n\n${code}`)
   return (
     <section className="mock-section">
       <div className="mock-section-head">
         <h4>{t('mocks.script')}</h4>
-        <button className="primary small-btn" disabled={!dirty} onClick={save}>
-          {t('mocks.saveScript')}
-        </button>
+        <div className="row">
+          <BeautifyButton
+            onClick={() => {
+              if (!view.current) return
+              view.current.focus()
+              void beautifyView(view.current)
+            }}
+          />
+          <button className="primary small-btn" disabled={!dirty} onClick={save}>
+            {t('mocks.saveScript')}
+          </button>
+        </div>
       </div>
       <p className="muted small">
         {t('mocks.scriptHint')} <code>pm.request</code>, <code>pm.response</code>, <code>pm.state</code>, <code>pm.session</code>, <code>pm.route</code>,{' '}
         <code>console</code>.
       </p>
       <div className="mock-script">
-        <div
-          className="mock-script-editor"
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-              e.preventDefault()
-              e.stopPropagation()
-              if (dirty) save()
-            }
-          }}
-        >
-          <CodeMirror key={mock.config.id} value={script} height="100%" theme="none" extensions={extensions} onChange={setScript} />
+        <div className="mock-script-editor">
+          <CodeEditor
+            memory={memoryKey(tabId, `mock.editor.${mock.config.id}`)}
+            value={script}
+            height="100%"
+            theme="none"
+            extensions={extensions}
+            onCreateEditor={(v) => (view.current = v)}
+            onChange={setScript}
+          />
         </div>
         <aside className="snippets">
           <p className="muted small">{t('mocks.snippets')}</p>
@@ -205,7 +221,7 @@ function MockLog({ mock }: { mock: MockState }) {
   )
 }
 
-function MockDetail({ mock }: { mock: MockState }) {
+function MockDetail({ tabId, mock }: { tabId: string; mock: MockState }) {
   const { config } = mock
   const actions = useMocks.getState()
   const [editingName, setEditingName] = useState(false)
@@ -337,7 +353,7 @@ function MockDetail({ mock }: { mock: MockState }) {
         />
       </section>
 
-      <ScriptEditor key={config.id} mock={mock} />
+      <ScriptEditor key={config.id} tabId={tabId} mock={mock} />
       <MockLog mock={mock} />
     </div>
   )
@@ -348,6 +364,7 @@ export function MocksView({ tab }: { tab: Tab }) {
   const wanted = tab.view?.kind === 'mocks' ? tab.view.mockId : undefined
   const selected = wanted === NEW ? null : (mocks.find((m) => m.config.id === wanted) ?? (wanted ? null : mocks[0]) ?? null)
   const select = (mockId: string) => useTabs.getState().openView({ kind: 'mocks', mockId })
+  const bodyRef = useScrollMemory<HTMLDivElement>(tab.id, `mocks.${selected?.config.id ?? 'new'}`)
 
   return (
     <div className="settings services">
@@ -364,8 +381,8 @@ export function MocksView({ tab }: { tab: Tab }) {
           {t('mocks.new')}
         </button>
       </nav>
-      <div className="settings-body">
-        {!loaded ? <p className="muted">{t('common.loading')}</p> : selected ? <MockDetail key={selected.config.id} mock={selected} /> : <NewMockForm onCreated={select} />}
+      <div className="settings-body" ref={bodyRef}>
+        {!loaded ? <p className="muted">{t('common.loading')}</p> : selected ? <MockDetail key={selected.config.id} tabId={tab.id} mock={selected} /> : <NewMockForm onCreated={select} />}
       </div>
     </div>
   )

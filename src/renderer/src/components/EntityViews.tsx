@@ -8,11 +8,13 @@ import { findItem, type Scripts } from '@shared/model'
 import { exportEnvironmentFile } from '@shared/variables'
 import { parentChain } from '../stores/context'
 import { useEnvironments } from '../stores/environments'
+import { useScrollMemory, useTabState } from '../stores/tabui'
 import { useTabs, type Tab } from '../stores/tabs'
 import { toast } from '../stores/ui'
 import { useWorkspace } from '../stores/workspace'
 import { AuthEditor } from './AuthEditor'
 import { ScriptsEditor } from './ScriptsEditor'
+import { horizontalWheel } from './Splitter'
 import { useScopes } from './VarInput'
 import { VariablesTable } from './VariablesTable'
 
@@ -100,7 +102,8 @@ export function CollectionView({ tab }: { tab: Tab }) {
   const view = tab.view
   const collections = useWorkspace((s) => s.collections)
   const ws = useWorkspace.getState()
-  const [section, setSection] = useState<EntitySection>('overview')
+  const [section, setSection] = useTabState<EntitySection>(tab.id, 'entity.section', 'overview')
+  const bodyRef = useScrollMemory<HTMLDivElement>(tab.id, `entity.${section}`)
   const collectionId = view && 'collectionId' in view ? view.collectionId : null
   const scopes = useScopes(collectionId)
   const collection = collections.find((c) => c.id === collectionId)
@@ -134,7 +137,7 @@ export function CollectionView({ tab }: { tab: Tab }) {
   ]
 
   return (
-    <div className="entity">
+    <div className="entity" ref={bodyRef}>
       <header className="entity-head">
         <div>
           <span className="muted small">{isFolder ? t('entity.folderOf', { collection: collection.name }) : t('entity.collection')}</span>
@@ -157,7 +160,7 @@ export function CollectionView({ tab }: { tab: Tab }) {
         )}
         </div>
       </header>
-      <nav className="tabs">
+      <nav className="tabs" ref={horizontalWheel}>
         {sections.map(([id, label]) => (
           <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}>
             {label}
@@ -211,7 +214,8 @@ export function CollectionView({ tab }: { tab: Tab }) {
             </p>
             <ScriptsEditor
               scripts={target.scripts}
-              editorKey={target.id}
+              tabId={tab.id}
+              scope={`entity.scripts.${target.id}`}
               onChange={(scripts) =>
                 edit((x) => {
                   x.scripts = scripts
