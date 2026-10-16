@@ -21,7 +21,7 @@ import type { HttpRequestSpec } from '@shared/http'
 import { sanitizeMockPatch, type MockEvent, type NewMockInput } from '@shared/mock'
 import { normalizeSettings, type Settings } from '@shared/settings'
 import { comboAccelerator, effectiveShortcuts, type ShortcutAction } from '@shared/shortcuts'
-import { THEMES } from '@shared/themes'
+import { activeTheme, THEMES } from '@shared/themes'
 import { parseCurl } from './curl'
 import { executeRequest } from './executor'
 import { executeHttp } from './http'
@@ -52,7 +52,7 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     title: 'Endora',
-    backgroundColor: THEMES[nativeTheme.shouldUseDarkColors ? settings.theme.dark : settings.theme.light].colors.bg,
+    backgroundColor: activeTheme(settings.theme, nativeTheme.shouldUseDarkColors).colors.bg,
     // Icône de fenêtre en développement (dans l'app empaquetée, l'icône vient de l'exécutable).
     ...(app.isPackaged ? {} : { icon: join(import.meta.dirname, '../../build/icon-512.png') }),
     webPreferences: {

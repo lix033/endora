@@ -105,14 +105,15 @@ describe('réglages, thèmes et raccourcis', () => {
     expect(normalizeSettings({ general: { responseFormat: 'xml', maxRedirects: 1000 } }).general).toMatchObject({ responseFormat: 'xml', maxRedirects: 100 })
   })
 
-  it('propose cinq thèmes et suit le système', () => {
-    expect(THEME_IDS).toHaveLength(5)
-    expect(Object.keys(THEMES)).toEqual(expect.arrayContaining(['night-owl', 'solarized-light', 'solarized-dark']))
+  it('propose six thèmes et suit le système', () => {
+    expect(THEME_IDS).toHaveLength(6)
+    expect(Object.keys(THEMES)).toEqual(expect.arrayContaining(['vantablack', 'night-owl', 'solarized-light', 'solarized-dark']))
     const setting = { mode: 'system' as const, fixed: 'endora-dark' as const, light: 'solarized-light' as const, dark: 'night-owl' as const }
     expect(activeTheme(setting, true).id).toBe('night-owl')
     expect(activeTheme(setting, false).id).toBe('solarized-light')
     expect(activeTheme({ ...setting, mode: 'fixed' }, false).id).toBe('endora-dark')
     expect(themeCssVariables(THEMES['solarized-dark'])['--bg']).toBe('#002b36')
+    expect(themeCssVariables(THEMES.vantablack)).toMatchObject({ '--bg': '#000000', '--bg-2': '#000000', 'color-scheme': 'dark' })
   })
 
   it('normalise, affiche et détecte les conflits de raccourcis', () => {

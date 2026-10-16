@@ -1,8 +1,8 @@
-// Thèmes de l'interface : cinq palettes propres à Endora. Night Owl (S. Drasner) et Solarized
+// Thèmes de l'interface : six palettes propres à Endora. Night Owl (S. Drasner) et Solarized
 // (E. Schoonover) reprennent des palettes publiques sous licence MIT, pas des assets du client
 // de référence.
 
-export const THEME_IDS = ['endora-dark', 'endora-light', 'night-owl', 'solarized-dark', 'solarized-light'] as const
+export const THEME_IDS = ['endora-dark', 'vantablack', 'endora-light', 'night-owl', 'solarized-dark', 'solarized-light'] as const
 export type ThemeId = (typeof THEME_IDS)[number]
 
 export const DEFAULT_THEME_DARK: ThemeId = 'endora-dark'
@@ -53,6 +53,21 @@ export const THEMES: Record<ThemeId, Theme> = {
       accent: '#1d9bf0', accentText: '#ffffff', ok: '#00ba7c', warn: '#ffd400', fail: '#f4212e', info: '#7ecbff', purple: '#a78bfa',
       selection: 'rgba(29, 155, 240, 0.24)',
       string: '#7ee2a8', number: '#ffb86b', keyword: '#c4a5ff', property: '#7ecbff', comment: '#6e7f8d',
+      variable: '#1d9bf0', variableUnresolved: '#f4212e'
+    }
+  },
+  vantablack: {
+    id: 'vantablack',
+    name: 'Vantablack',
+    dark: true,
+    // Noir absolu pour les écrans OLED : fond et panneaux à #000, séparés par des bordures fines ;
+    // seuls le survol et les états actifs se détachent. Texte légèrement adouci pour éviter le
+    // halo du blanc pur sur fond noir.
+    colors: {
+      bg: '#000000', bg2: '#000000', bg3: '#141414', border: '#262626', text: '#e8e8e8', muted: '#8c8c8c',
+      accent: '#1d9bf0', accentText: '#ffffff', ok: '#00ba7c', warn: '#ffd400', fail: '#f4212e', info: '#7ecbff', purple: '#a78bfa',
+      selection: 'rgba(29, 155, 240, 0.3)',
+      string: '#7ee2a8', number: '#ffb86b', keyword: '#c4a5ff', property: '#7ecbff', comment: '#6b6b6b',
       variable: '#1d9bf0', variableUnresolved: '#f4212e'
     }
   },

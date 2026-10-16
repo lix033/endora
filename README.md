@@ -60,7 +60,7 @@ Chaque release publie un fichier `SHA256SUMS.txt` ; les scripts d'installation v
 - **Collection Runner** — ordre réglable, itérations, délai, fichiers de données CSV/JSON, `setNextRequest`, rapport exportable.
 - **Imports** — cURL (y compris collé dans l'URL), collections v1/v2/v2.1, environnements, OpenAPI 3.0/3.1, Swagger 1.2/2.0, RAML 0.8/1.0, GraphQL, HAR, WSDL 1.1/2.0, WADL ; depuis un fichier, un lien ou du texte.
 - **Génération de code** — 20 langages (cURL, Python, JavaScript, Node.js, Go, Java, C#, PHP, Ruby, Rust, Swift, Kotlin, Dart, PowerShell…).
-- **Application** — 5 thèmes (dont Night Owl et Solarized) avec synchronisation clair/sombre du système, raccourcis personnalisables, vérification des mises à jour.
+- **Application** — 6 thèmes (dont Vantablack, Night Owl et Solarized) avec synchronisation clair/sombre du système, raccourcis personnalisables, vérification des mises à jour.
 
 Toutes les données restent sur votre machine (`collections/`, `environments/`, `history.json`…) ; les collections sont stockées au format collection v2.1, lisible par d'autres outils. Endora n'envoie aucune télémétrie.
 

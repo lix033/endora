@@ -7,6 +7,17 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+### Ajouté
+
+- **Thème Vantablack** : noir absolu sur toute l'interface (fond, panneaux, éditeurs), pensé pour
+  les écrans OLED. Disponible dans Paramètres › Thèmes, en thème fixe ou comme thème sombre de la
+  synchronisation système.
+
+### Corrigé
+
+- Une nouvelle fenêtre s'ouvre avec le fond du thème choisi en mode fixe, et non plus celui du
+  thème sombre ou clair du système.
+
 ## [0.3.0] — 2026-10-16
 
 ### Ajouté
