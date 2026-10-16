@@ -1,7 +1,7 @@
 {
   "name": "endora",
   "productName": "Endora",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Client API de bureau open source : requêtes HTTP, collections, environnements, scripts, runner et génération de code.",
   "license": "MIT",
   "author": {
