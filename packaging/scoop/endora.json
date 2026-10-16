@@ -1,0 +1,35 @@
+{
+  "version": "{{VERSION}}",
+  "description": "Client API de bureau open source",
+  "homepage": "https://github.com/lix033/endora",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/lix033/endora/releases/download/v{{VERSION}}/Endora-{{VERSION}}-win-x64.zip",
+      "hash": "{{SHA_WIN_ZIP_X64}}"
+    },
+    "arm64": {
+      "url": "https://github.com/lix033/endora/releases/download/v{{VERSION}}/Endora-{{VERSION}}-win-arm64.zip",
+      "hash": "{{SHA_WIN_ZIP_ARM64}}"
+    }
+  },
+  "shortcuts": [["Endora.exe", "Endora"]],
+  "persist": [],
+  "checkver": {
+    "github": "https://github.com/lix033/endora"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/lix033/endora/releases/download/v$version/Endora-$version-win-x64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/lix033/endora/releases/download/v$version/Endora-$version-win-arm64.zip"
+      }
+    },
+    "hash": {
+      "url": "https://github.com/lix033/endora/releases/download/v$version/SHA256SUMS.txt",
+      "regex": "^([a-fA-F0-9]{64})\\s+$basename$"
+    }
+  }
+}

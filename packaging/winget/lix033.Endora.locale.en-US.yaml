@@ -1,0 +1,22 @@
+# Manifeste winget (description, anglais) — généré par scripts/render-packaging.mjs.
+PackageIdentifier: lix033.Endora
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: lix033
+PublisherUrl: https://github.com/lix033
+PublisherSupportUrl: https://github.com/lix033/endora/issues
+PackageName: Endora
+PackageUrl: https://github.com/lix033/endora
+License: MIT
+LicenseUrl: https://github.com/lix033/endora/blob/main/LICENSE
+ShortDescription: Open source desktop API client
+Description: Endora is an open source desktop API client — HTTP requests, collections, environments, scripts, collection runner, imports and code generation.
+Tags:
+  - api
+  - http
+  - rest
+  - api-client
+  - openapi
+ReleaseNotesUrl: https://github.com/lix033/endora/releases/tag/v{{VERSION}}
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

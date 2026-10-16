@@ -1,0 +1,74 @@
+# Packaging Endora (electron-builder) — voir docs/PUBLICATION.md.
+# Construire d'abord : npm run build && npm run licenses (fait par les scripts dist:*).
+appId: io.github.lix033.endora
+productName: Endora
+copyright: Copyright © 2026 lix033 et les contributeurs d'Endora
+directories:
+  buildResources: build
+  output: release
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: build/THIRD_PARTY_LICENSES.txt
+    to: THIRD_PARTY_LICENSES.txt
+
+# Les binaires sont publiés dans un brouillon de release GitHub, puis la release est publiée par
+# la CI une fois toutes les plateformes construites (.github/workflows/release.yml).
+publish:
+  provider: github
+  owner: lix033
+  repo: endora
+  releaseType: draft
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # Signature et notarisation automatiques si CSC_LINK / APPLE_* sont définis (sinon : non signé).
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: Endora-${version}-mac-${arch}.${ext}
+dmg:
+  title: Endora ${version}
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  artifactName: Endora-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Endora
+  artifactName: Endora-Setup-${version}-${arch}.${ext}
+
+linux:
+  icon: build/icon.png
+  category: Development
+  synopsis: Client API de bureau open source
+  maintainer: lix033 <julienkolou03@gmail.com>
+  vendor: lix033
+  executableName: endora
+  # Architecture choisie à la ligne de commande (--x64 / --arm64) : la CI construit chaque
+  # architecture sur un runner natif.
+  target: [AppImage, deb, rpm, tar.gz]
+  artifactName: Endora-${version}-linux-${arch}.${ext}
+deb:
+  artifactName: endora_${version}_${arch}.${ext}
+rpm:
+  artifactName: endora-${version}.${arch}.${ext}

@@ -1,0 +1,185 @@
+# Publication : un tag vX.Y.Z construit Endora pour macOS, Windows et Linux, publie la release
+# GitHub (avec empreintes SHA-256) puis met à jour Homebrew, Scoop et winget.
+# Procédure complète : docs/PUBLICATION.md
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+
+env:
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  prepare:
+    name: Préparer la release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        name: Vérifier la version
+        run: |
+          version="${TAG#v}"
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::Le tag $TAG ne correspond pas à package.json ($pkg)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
+      - name: Créer le brouillon de release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-notes.mjs "${{ steps.meta.outputs.version }}" > notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" --draft --title "Endora ${{ steps.meta.outputs.version }}" --notes-file notes.md \
+              $([ "${{ steps.meta.outputs.prerelease }}" = true ] && echo --prerelease)
+          fi
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (arm64 + x64)
+            os: macos-latest
+            args: --mac
+          - name: Windows (x64 + arm64)
+            os: windows-latest
+            args: --win
+          - name: Linux x64
+            os: ubuntu-latest
+            args: --linux --x64
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+            args: --linux --arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run licenses
+      - name: Outils de paquets Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Empaqueter et publier
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Signature macOS et notarisation (facultatives) — voir docs/PUBLICATION.md.
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Signature Windows (facultative).
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          extra=""
+          if [ "$RUNNER_OS" = macOS ]; then
+            if [ -n "$MAC_CSC_LINK" ]; then
+              export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+            else
+              # Sans certificat Apple : signature ad hoc, indispensable sur Apple Silicon.
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+              extra="-c.mac.identity=-"
+            fi
+          fi
+          if [ "$RUNNER_OS" = Windows ] && [ -z "$WIN_CSC_LINK" ]; then
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          [ -z "$APPLE_ID" ] && unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          npx electron-builder ${{ matrix.args }} --publish always $extra
+
+  publish:
+    name: Publier la release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Empreintes SHA-256 et publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir assets
+          gh release download "$TAG" --dir assets --pattern 'Endora*' --pattern 'endora*'
+          (cd assets && sha256sum -- * | grep -v '\.blockmap$' > ../SHA256SUMS.txt)
+          cat SHA256SUMS.txt
+          gh release upload "$TAG" SHA256SUMS.txt --clobber
+          gh release edit "$TAG" --draft=false $([ "${{ needs.prepare.outputs.prerelease }}" = true ] && echo --prerelease || echo --latest)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sha256sums
+          path: SHA256SUMS.txt
+
+  packages:
+    name: Homebrew et Scoop
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sha256sums
+      - run: node scripts/render-packaging.mjs "${{ needs.prepare.outputs.version }}" SHA256SUMS.txt
+      - name: Mettre à jour le tap Homebrew (lix033/homebrew-tap)
+        if: env.HOMEBREW_TAP_TOKEN != ''
+        run: |
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/lix033/homebrew-tap.git" tap
+          mkdir -p tap/Casks && cp dist-packaging/homebrew/endora.rb tap/Casks/endora.rb
+          cd tap && git config user.name "endora-release" && git config user.email "actions@users.noreply.github.com"
+          git add Casks/endora.rb && git commit -m "endora ${{ needs.prepare.outputs.version }}" && git push
+      - name: Mettre à jour le bucket Scoop (lix033/scoop-bucket)
+        if: env.SCOOP_BUCKET_TOKEN != ''
+        run: |
+          git clone "https://x-access-token:${SCOOP_BUCKET_TOKEN}@github.com/lix033/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket && cp dist-packaging/scoop/endora.json bucket/bucket/endora.json
+          cd bucket && git config user.name "endora-release" && git config user.email "actions@users.noreply.github.com"
+          git add bucket/endora.json && git commit -m "endora ${{ needs.prepare.outputs.version }}" && git push
+
+  winget:
+    name: winget
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease == 'false'
+    runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.WINGET_TOKEN != ''
+      - uses: actions/download-artifact@v4
+        if: env.WINGET_TOKEN != ''
+        with:
+          name: sha256sums
+      - name: Soumettre les manifestes à microsoft/winget-pkgs
+        if: env.WINGET_TOKEN != ''
+        shell: pwsh
+        run: |
+          node scripts/render-packaging.mjs "${{ needs.prepare.outputs.version }}" SHA256SUMS.txt
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit "dist-packaging/winget/manifests/l/lix033/Endora/${{ needs.prepare.outputs.version }}" --token $env:WINGET_TOKEN

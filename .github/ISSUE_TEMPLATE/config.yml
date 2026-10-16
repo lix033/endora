@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Faille de sécurité
+    url: https://github.com/lix033/endora/security/advisories/new
+    about: Signalez les vulnérabilités en privé.
+  - name: Guide d'installation
+    url: https://github.com/lix033/endora/blob/main/docs/INSTALLATION.md
+    about: Installation, mise à jour, désinstallation et dépannage.

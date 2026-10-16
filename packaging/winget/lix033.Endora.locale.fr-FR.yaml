@@ -1,0 +1,12 @@
+# Manifeste winget (description, français) — généré par scripts/render-packaging.mjs.
+PackageIdentifier: lix033.Endora
+PackageVersion: {{VERSION}}
+PackageLocale: fr-FR
+Publisher: lix033
+PackageName: Endora
+License: MIT
+ShortDescription: Client API de bureau open source
+Description: Endora est un client API de bureau open source — requêtes HTTP, collections, environnements, scripts, Collection Runner, imports et génération de code.
+ReleaseNotesUrl: https://github.com/lix033/endora/releases/tag/v{{VERSION}}
+ManifestType: locale
+ManifestVersion: 1.9.0

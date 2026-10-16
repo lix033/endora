@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Endora — client API de bureau open source</title>
+    <meta name="description" content="Endora : client API de bureau open source pour macOS, Windows et Linux. Requêtes HTTP, collections, environnements, scripts, Collection Runner, imports OpenAPI et génération de code." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <meta property="og:title" content="Endora" />
+    <meta property="og:description" content="Client API de bureau open source pour macOS, Windows et Linux." />
+    <meta property="og:image" content="https://lix033.github.io/endora/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      :root {
+        --bg: #15202b; --bg2: #192734; --bg3: #22303c; --border: #38444d; --text: #f7f9f9; --muted: #8b98a5; --accent: #1d9bf0;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif; }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+      header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; color: var(--text); }
+      .brand img { width: 32px; height: 32px; }
+      nav a { color: var(--muted); margin-left: 22px; font-size: 15px; }
+      .hero { text-align: center; padding: 72px 0 40px; }
+      .hero img { width: 112px; height: 112px; }
+      h1 { font-size: 52px; line-height: 1.1; margin: 18px 0 12px; letter-spacing: -1px; }
+      .tagline { color: var(--muted); font-size: 20px; max-width: 660px; margin: 0 auto 32px; }
+      .cta { display: inline-flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+      .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 999px; font-weight: 600; border: 1px solid var(--border); color: var(--text); background: var(--bg2); }
+      .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .btn:hover { text-decoration: none; filter: brightness(1.08); }
+      .version { color: var(--muted); font-size: 14px; margin-top: 14px; }
+      section { padding: 40px 0; }
+      h2 { font-size: 28px; margin: 0 0 20px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+      .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+      .card h3 { margin: 0 0 6px; font-size: 16px; }
+      .card p { margin: 0; color: var(--muted); font-size: 14px; }
+      .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+      .tabs button { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 16px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; }
+      .tabs button.active { color: var(--text); border-color: var(--accent); background: rgba(29, 155, 240, 0.12); }
+      .cmd { display: flex; align-items: center; gap: 10px; background: #0e1822; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+      .cmd span.label { color: var(--muted); font-size: 13px; min-width: 120px; }
+      .cmd code { flex: 1; font: 14px ui-monospace, Menlo, Consolas, monospace; overflow-x: auto; white-space: nowrap; }
+      .cmd button { background: var(--bg3); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+      .files a { display: inline-block; margin: 4px 12px 4px 0; font-size: 14px; }
+      footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; padding: 28px 0 40px; margin-top: 40px; }
+      @media (max-width: 640px) { h1 { font-size: 38px; } nav { display: none; } .cmd span.label { display: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a class="brand" href="./"><img src="favicon.svg" alt="" />Endora</a>
+        <nav>
+          <a href="#fonctionnalites">Fonctionnalités</a>
+          <a href="#installer">Installer</a>
+          <a href="https://github.com/lix033/endora/tree/main/docs">Documentation</a>
+          <a href="https://github.com/lix033/endora">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="hero">
+        <img src="favicon.svg" alt="Logo Endora" />
+        <h1>Le client API de bureau, libre.</h1>
+        <p class="tagline">Requêtes HTTP, collections, environnements, scripts et tests, Collection Runner, imports OpenAPI/RAML/WSDL et génération de code. Local, sans compte, open source.</p>
+        <div class="cta">
+          <a class="btn primary" id="download" href="https://github.com/lix033/endora/releases/latest">Télécharger</a>
+          <a class="btn" href="#installer">Installer en ligne de commande</a>
+          <a class="btn" href="https://github.com/lix033/endora">Code source</a>
+        </div>
+        <p class="version" id="version">macOS · Windows · Linux</p>
+      </div>
+
+      <section id="fonctionnalites">
+        <h2>Fonctionnalités</h2>
+        <div class="grid">
+          <div class="card"><h3>Requêtes HTTP</h3><p>Params, en-têtes, bodies raw / form-data / urlencoded, HTTP/2, réponse formatée, aperçu.</p></div>
+          <div class="card"><h3>Collections</h3><p>Dossiers, onglets, historique, requêtes libres, format collection v2.1 compatible.</p></div>
+          <div class="card"><h3>Environnements</h3><p>Variables {{…}} par portée, valeurs initiales et courantes, secrets chiffrés.</p></div>
+          <div class="card"><h3>Autorisation</h3><p>Bearer, Basic, API key, OAuth 1.0 et 2.0, Digest, NTLM, AWS SigV4, Hawk, JWT, EdgeGrid…</p></div>
+          <div class="card"><h3>Scripts et tests</h3><p>Scripts avant/après la requête avec l’API pm.*, assertions chai, console.</p></div>
+          <div class="card"><h3>Collection Runner</h3><p>Itérations, délai, fichiers de données CSV/JSON, setNextRequest, rapport exportable.</p></div>
+          <div class="card"><h3>Imports</h3><p>cURL, OpenAPI 3.x, Swagger, RAML, GraphQL, HAR, WSDL, WADL, collections v1/v2.</p></div>
+          <div class="card"><h3>Génération de code</h3><p>20 langages : cURL, Python, JavaScript, Go, Java, C#, PHP, Rust, Swift…</p></div>
+        </div>
+      </section>
+
+      <section id="installer">
+        <h2>Installer</h2>
+        <div class="tabs" role="tablist">
+          <button data-os="mac">macOS</button>
+          <button data-os="win">Windows</button>
+          <button data-os="linux">Linux</button>
+        </div>
+        <div data-panel="mac">
+          <div class="cmd"><span class="label">Homebrew</span><code>brew install --cask lix033/tap/endora</code><button>Copier</button></div>
+          <div class="cmd"><span class="label">Script</span><code>curl -fsSL https://lix033.github.io/endora/install.sh | sh</code><button>Copier</button></div>
+        </div>
+        <div data-panel="win" hidden>
+          <div class="cmd"><span class="label">winget</span><code>winget install lix033.Endora</code><button>Copier</button></div>
+          <div class="cmd"><span class="label">Scoop</span><code>scoop bucket add lix033 https://github.com/lix033/scoop-bucket; scoop install endora</code><button>Copier</button></div>
+          <div class="cmd"><span class="label">PowerShell</span><code>irm https://lix033.github.io/endora/install.ps1 | iex</code><button>Copier</button></div>
+        </div>
+        <div data-panel="linux" hidden>
+          <div class="cmd"><span class="label">Script</span><code>curl -fsSL https://lix033.github.io/endora/install.sh | sh</code><button>Copier</button></div>
+          <div class="cmd"><span class="label">AppImage</span><code>ENDORA_METHOD=appimage sh -c "$(curl -fsSL https://lix033.github.io/endora/install.sh)"</code><button>Copier</button></div>
+        </div>
+        <p class="files" id="files"></p>
+      </section>
+
+      <footer>
+        Endora est un logiciel libre sous licence MIT · <a href="https://github.com/lix033/endora/releases">Toutes les versions</a> ·
+        <a href="https://github.com/lix033/endora/blob/main/docs/INSTALLATION.md">Guide d’installation</a> ·
+        <a href="https://github.com/lix033/endora/issues">Signaler un problème</a>
+      </footer>
+    </div>
+
+    <script>
+      // Système du visiteur : onglet d'installation et bouton de téléchargement adaptés.
+      const ua = navigator.userAgent
+      const os = /Windows/.test(ua) ? 'win' : /Mac/.test(ua) ? 'mac' : /Linux|X11/.test(ua) ? 'linux' : 'mac'
+      const show = (target) => {
+        document.querySelectorAll('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== target))
+        document.querySelectorAll('[data-os]').forEach((b) => b.classList.toggle('active', b.dataset.os === target))
+      }
+      document.querySelectorAll('[data-os]').forEach((b) => b.addEventListener('click', () => show(b.dataset.os)))
+      show(os)
+      document.querySelectorAll('.cmd button').forEach((b) =>
+        b.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(b.previousElementSibling.textContent)
+          b.textContent = 'Copié'
+          setTimeout(() => (b.textContent = 'Copier'), 1500)
+        })
+      )
+      // Dernière version et liens directs (API publique GitHub, sans jeton).
+      fetch('https://api.github.com/repos/lix033/endora/releases/latest')
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((release) => {
+          const v = release.tag_name.replace(/^v/, '')
+          document.getElementById('version').textContent = `Version ${v} · macOS · Windows · Linux`
+          const assets = release.assets.map((a) => ({ name: a.name, url: a.browser_download_url }))
+          // Mac : Apple Silicon par défaut (le DMG Intel reste dans la liste des téléchargements).
+          const pick = {
+            mac: assets.find((a) => a.name.endsWith('mac-arm64.dmg')),
+            win: assets.find((a) => a.name === `Endora-Setup-${v}-x64.exe`),
+            linux: assets.find((a) => a.name.endsWith('x86_64.AppImage'))
+          }[os]
+          if (pick) {
+            const btn = document.getElementById('download')
+            btn.href = pick.url
+            btn.textContent = `Télécharger pour ${{ mac: 'macOS', win: 'Windows', linux: 'Linux' }[os]}`
+          }
+          document.getElementById('files').innerHTML =
+            'Téléchargements directs : ' +
+            assets
+              .filter((a) => /\.(dmg|exe|AppImage|deb|rpm)$/.test(a.name))
+              .map((a) => `<a href="${a.url}">${a.name}</a>`)
+              .join('')
+        })
+        .catch(() => {})
+    </script>
+  </body>
+</html>

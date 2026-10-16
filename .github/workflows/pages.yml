@@ -1,0 +1,46 @@
+# Site de présentation (GitHub Pages) : https://lix033.github.io/endora/
+# Publie aussi les scripts d'installation à une adresse courte.
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'scripts/install.sh', 'scripts/install.ps1', 'build/logo.svg', 'docs/assets/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Assembler le site
+        run: |
+          mkdir -p _site
+          cp site/index.html _site/
+          cp build/logo.svg _site/favicon.svg
+          cp docs/assets/social-preview.png _site/
+          cp scripts/install.sh scripts/install.ps1 _site/
+          node -e "require('sharp')('build/logo.svg').resize(180,180).png().toFile('_site/icon-180.png')"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

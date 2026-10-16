@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+.DS_Store
+# Données d analyse REA de l app de référence (ne jamais committer)
+.rea/
+release/
+build/THIRD_PARTY_LICENSES.txt
+dist-packaging/
+
+CLAUDE.md
+docs/FEATURES.md

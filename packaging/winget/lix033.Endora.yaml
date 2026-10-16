@@ -1,0 +1,6 @@
+# Manifeste winget (version) — généré par scripts/render-packaging.mjs.
+PackageIdentifier: lix033.Endora
+PackageVersion: {{VERSION}}
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.9.0

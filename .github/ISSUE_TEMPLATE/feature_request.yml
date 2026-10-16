@@ -1,0 +1,19 @@
+name: Proposer une fonctionnalité
+description: Une idée d'amélioration pour Endora
+labels: [amélioration]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Besoin
+      description: Quel problème cette fonctionnalité résout-elle ?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution envisagée
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives ou contournements actuels

@@ -1,0 +1,45 @@
+name: Signaler un bug
+description: Un comportement inattendu ou une erreur dans Endora
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Merci de prendre le temps de signaler ce problème. Pour une faille de sécurité, suivez SECURITY.md au lieu d'ouvrir un ticket.
+  - type: input
+    id: version
+    attributes:
+      label: Version d'Endora
+      description: Paramètres › Mises à jour
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Système
+      options: [macOS (Apple Silicon), macOS (Intel), Windows x64, Windows ARM, Linux x64, Linux ARM64]
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Méthode d'installation
+      options: [Homebrew, winget, Scoop, Script (install.sh / install.ps1), Téléchargement direct, Depuis les sources]
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: "1. …\n2. …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Résultat attendu et résultat obtenu
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Captures, messages d'erreur ou contenu de la console
+      render: text

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Exécution des scripts : aucune ressource externe, aucun réseau ; eval nécessaire pour compiler les scripts. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'; frame-src 'self' about:"
+    />
+    <title>Endora — scripts</title>
+  </head>
+  <body>
+    <script type="module" src="./sandbox/main.ts"></script>
+  </body>
+</html>
