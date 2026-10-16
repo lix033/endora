@@ -7,6 +7,8 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
+## ## [0.2.0] — 2026-10-16
+
 ## [0.1.0] — 2026-10-16
 
 Première version publique.
