@@ -128,7 +128,7 @@ jobs:
           cat SHA256SUMS.txt
           gh release upload "$TAG" SHA256SUMS.txt --clobber
           gh release edit "$TAG" --draft=false $([ "${{ needs.prepare.outputs.prerelease }}" = true ] && echo --prerelease || echo --latest)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sha256sums
           path: SHA256SUMS.txt
