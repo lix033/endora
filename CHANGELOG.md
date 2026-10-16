@@ -7,7 +7,11 @@ release (voir [docs/PUBLICATION.md](docs/PUBLICATION.md)).
 
 ## [Non publié]
 
-## ## [0.2.0] — 2026-10-16
+## [0.2.0] — 2026-10-16
+
+### Corrigé
+
+- Compatibilité avec TypeScript 7 : l'option `baseUrl`, supprimée, est retirée de `tsconfig.json`.
 
 ## [0.1.0] — 2026-10-16
 
