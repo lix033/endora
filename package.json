@@ -51,7 +51,7 @@
     "fast-xml-parser": "^5.11.2",
     "graphql-to-postman": "^1.0.0",
     "jose": "^6.2.12",
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^5.5.0",
     "openapi-to-postmanv2": "^6.4.0",
     "postman-code-generators": "^2.1.1",
     "postman-collection": "^5.3.1",
