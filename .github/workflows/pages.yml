@@ -39,7 +39,7 @@ jobs:
           cp scripts/install.sh scripts/install.ps1 _site/
           node -e "require('sharp')('build/logo.svg').resize(180,180).png().toFile('_site/icon-180.png')"
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
